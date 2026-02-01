@@ -3,6 +3,8 @@
  * Handles authentication and media browsing
  */
 
+/* global LibraryTab */
+
 /**
  * Debug logging helper function
  * Only logs if debug logging is enabled in preferences
@@ -81,12 +83,30 @@ class JellyfinSidebar {
     this.setupEventListeners();
     this.setupTabNavigation();
     this.setupMessageHandlers();
+    this.initLibraryTabs();
 
     // Request session data from main plugin
     this.requestSessionData();
 
     // Show login form initially (will be hidden if auto-login succeeds)
     this.showLoginForm();
+  }
+
+  initLibraryTabs() {
+    this.libraryTabs = {
+      movies: new LibraryTab({
+        tabId: 'movies',
+        containerSelector: '#moviesGrid',
+        itemType: 'Movie',
+        getSidebar: () => this,
+      }),
+      tvshows: new LibraryTab({
+        tabId: 'tvshows',
+        containerSelector: '#tvshowsGrid',
+        itemType: 'Series',
+        getSidebar: () => this,
+      }),
+    };
   }
 
   setupEventListeners() {
@@ -162,6 +182,11 @@ class JellyfinSidebar {
         // Load content if needed
         if (tabName === 'recent' && this.currentUser) {
           this.loadRecentItems();
+        }
+
+        // Trigger library tab lifecycle
+        if (this.libraryTabs && this.libraryTabs[tabName]) {
+          this.libraryTabs[tabName].onActivate();
         }
       });
     });
