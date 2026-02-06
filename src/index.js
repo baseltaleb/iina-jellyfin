@@ -228,6 +228,32 @@ function ticksToSeconds(ticks) {
 }
 
 /**
+ * Fetch the current user's ID from Jellyfin
+ * @param {string} serverBase - Jellyfin server base URL
+ * @param {string} apiKey - API key
+ * @returns {Promise<string|null>} User ID or null if failed
+ */
+async function fetchCurrentUserId(serverBase, apiKey) {
+  try {
+    const url = `${serverBase}/Users/Me?api_key=${apiKey}`;
+    debugLog(`Fetching current user ID from: ${url}`);
+
+    const response = await http.get(url, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (response.data && response.data.Id) {
+      debugLog(`Current user ID: ${response.data.Id}`);
+      return response.data.Id;
+    }
+    return null;
+  } catch (error) {
+    debugLog(`Error fetching user ID: ${error.message}`);
+    return null;
+  }
+}
+
+/**
  * Fetch the resume position for an item from Jellyfin
  * @param {string} serverBase - Jellyfin server base URL
  * @param {string} itemId - Item ID
@@ -471,17 +497,23 @@ async function reportPlaybackStop(
  * @param {string} serverBase - Jellyfin server base URL
  * @param {string} itemId - Item ID
  * @param {string} apiKey - API key
+ * @param {string} userId - User ID (required by Jellyfin API)
  */
-async function markAsWatched(serverBase, itemId, apiKey) {
+async function markAsWatched(serverBase, itemId, apiKey, userId) {
   try {
     if (!preferences.get('sync_playback_progress')) {
       debugLog('Playback progress sync disabled, skipping mark as watched');
       return false;
     }
 
-    // Use UserPlayedItems endpoint - this marks the item as played for the authenticated user
-    const url = `${serverBase}/UserPlayedItems/${itemId}?api_key=${apiKey}`;
-    debugLog(`Marking item as watched: ${itemId}`);
+    if (!userId) {
+      debugLog('No userId available, cannot mark as watched');
+      return false;
+    }
+
+    // Use UserPlayedItems endpoint with userId - required by Jellyfin API
+    const url = `${serverBase}/UserPlayedItems/${itemId}?userId=${userId}&api_key=${apiKey}`;
+    debugLog(`Marking item as watched: ${itemId} for user: ${userId}`);
 
     const response = await http.post(url, {
       headers: {
@@ -531,6 +563,7 @@ async function startPlaybackTracking(serverBase, itemId, apiKey) {
   // Fetch playback info to get PlaySessionId and MediaSourceId
   let playSessionId = null;
   let mediaSourceId = null;
+  let userId = null;
   try {
     const playbackInfo = await fetchPlaybackInfo(serverBase, itemId, apiKey);
     if (playbackInfo) {
@@ -544,6 +577,14 @@ async function startPlaybackTracking(serverBase, itemId, apiKey) {
     debugLog(`Could not fetch playback info for session: ${error.message}`);
   }
 
+  // Fetch current user ID (required for marking items as watched)
+  try {
+    userId = await fetchCurrentUserId(serverBase, apiKey);
+    debugLog(`Fetched userId for playback session: ${userId}`);
+  } catch (error) {
+    debugLog(`Could not fetch user ID: ${error.message}`);
+  }
+
   // Store current session info
   currentPlaybackSession = {
     serverBase,
@@ -551,6 +592,7 @@ async function startPlaybackTracking(serverBase, itemId, apiKey) {
     apiKey,
     playSessionId,
     mediaSourceId,
+    userId,
     startTime: Date.now(),
     duration: null,
     hasReportedWatched: false,
@@ -623,7 +665,7 @@ function handlePlaybackPositionChange() {
 
         if (percentComplete >= WATCHED_THRESHOLD) {
           debugLog(`Reached ${WATCHED_THRESHOLD * 100}% threshold, marking as watched`);
-          markAsWatched(serverBase, itemId, apiKey);
+          markAsWatched(serverBase, itemId, apiKey, currentPlaybackSession.userId);
           currentPlaybackSession.hasReportedWatched = true;
         }
       }
@@ -1712,7 +1754,8 @@ event.on('mpv.eof-reached', () => {
       markAsWatched(
         currentPlaybackSession.serverBase,
         currentPlaybackSession.itemId,
-        currentPlaybackSession.apiKey
+        currentPlaybackSession.apiKey,
+        currentPlaybackSession.userId
       );
     }
   }
