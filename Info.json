@@ -1,6 +1,6 @@
 {
   "name": "Jellyfin",
-  "identifier": "com.mhajder.iina-jellyfin",
+  "identifier": "com.mhajder.iina-jellyfin2",
   "version": "0.3.0",
   "description": "Jellyfin plugin for IINA, enabling seamless media playback and subtitle management.",
   "author": {
@@ -23,6 +23,7 @@
     "open_in_new_window": true,
     "auto_login_enabled": true,
     "session_max_age_hours": 24,
+    "jellyfin_persist_credentials": true,
     "autoplay_next_episode": true,
     "sync_playback_progress": true
   },

@@ -17,6 +17,8 @@ const {
   playlist,
 } = iina;
 
+const { base64Encode, base64Decode } = require('./utils.js');
+
 // Plugin state
 let lastJellyfinUrl = null;
 let lastItemId = null;
@@ -1208,7 +1210,7 @@ async function downloadAllSubtitles(serverBase, itemId, apiKey) {
 /**
  * Store Jellyfin session data for auto-login
  */
-function storeJellyfinSession(serverBase, apiKey) {
+function storeJellyfinSession(serverBase, apiKey, username = null, password = null) {
   try {
     if (!preferences.get('auto_login_enabled')) {
       debugLog('Auto-login disabled, not storing session data');
@@ -1221,6 +1223,15 @@ function storeJellyfinSession(serverBase, apiKey) {
     preferences.set('jellyfin_session_server', serverBase);
     preferences.set('jellyfin_session_token', apiKey);
     preferences.set('jellyfin_session_timestamp', Date.now());
+
+    // Store credentials if provided and persistence is enabled
+    if (username && password && preferences.get('jellyfin_persist_credentials')) {
+      preferences.set('jellyfin_session_username', username);
+      // Obfuscate password with base64 encoding
+      preferences.set('jellyfin_session_password', base64Encode(password));
+      debugLog('Credentials stored for automatic re-authentication');
+    }
+
     preferences.sync();
 
     debugLog('Jellyfin session data stored successfully');
@@ -1247,6 +1258,8 @@ function clearJellyfinSession() {
     preferences.set('jellyfin_session_server', '');
     preferences.set('jellyfin_session_token', '');
     preferences.set('jellyfin_session_timestamp', 0);
+    preferences.set('jellyfin_session_username', '');
+    preferences.set('jellyfin_session_password', '');
     preferences.sync();
 
     // Notify sidebar about cleared session
@@ -1271,27 +1284,40 @@ function getStoredJellyfinSession() {
     const serverUrl = preferences.get('jellyfin_session_server');
     const accessToken = preferences.get('jellyfin_session_token');
     const timestamp = preferences.get('jellyfin_session_timestamp') || 0;
+    const username = preferences.get('jellyfin_session_username');
+    const encodedPassword = preferences.get('jellyfin_session_password');
 
-    if (!serverUrl || !accessToken) {
+    if (!serverUrl) {
       debugLog('No valid session data found');
       return null;
     }
 
-    // Check if session is not too old (24 hours)
-    const maxAge = preferences.get('session_max_age_hours') || 24;
-    const sessionAge = (Date.now() - timestamp) / (1000 * 60 * 60); // hours
+    // Decode password if stored
+    let password = null;
+    if (encodedPassword) {
+      try {
+        password = base64Decode(encodedPassword);
+      } catch (decodeError) {
+        debugLog('Failed to decode stored password: ' + decodeError.message);
+      }
+    }
 
-    if (sessionAge > maxAge) {
-      debugLog(`Session too old (${sessionAge.toFixed(1)} hours), clearing`);
-      clearJellyfinSession();
+    const hasCredentials = !!(username && password);
+
+    // If no token but has credentials, still return session data for re-authentication
+    if (!accessToken && !hasCredentials) {
+      debugLog('No token or credentials found');
       return null;
     }
 
-    debugLog(`Retrieved valid session data for: ${serverUrl}`);
+    debugLog(`Retrieved session data for: ${serverUrl} (hasCredentials: ${hasCredentials})`);
     return {
       serverUrl,
       accessToken,
       timestamp,
+      username,
+      password,
+      hasCredentials,
     };
   } catch (error) {
     debugLog(`Error retrieving Jellyfin session: ${error.message}`);
@@ -1601,7 +1627,7 @@ function openJellyfinStandaloneWindow(sessionData) {
 
     standaloneWindow.onMessage('store-session', (data) => {
       if (data && data.serverUrl && data.accessToken) {
-        storeJellyfinSession(data.serverUrl, data.accessToken);
+        storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password);
       }
     });
 
@@ -1783,7 +1809,7 @@ event.on('iina.window-loaded', () => {
   // Handle session storage requests from sidebar (manual login)
   sidebar.onMessage('store-session', (data) => {
     if (data && data.serverUrl && data.accessToken) {
-      storeJellyfinSession(data.serverUrl, data.accessToken);
+      storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password);
     }
   });
 

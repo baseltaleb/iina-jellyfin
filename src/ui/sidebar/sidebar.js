@@ -257,51 +257,117 @@ class JellyfinSidebar {
       // Update UI to show connecting
       this.updateServerStatus('Auto-connecting...', 'connecting');
 
-      // Test the stored session by making a simple API call
-      const response = await this.getHttpClient().get(`${sessionData.serverUrl}/System/Info`, {
-        headers: {
-          'X-Emby-Token': sessionData.accessToken,
-        },
-      });
+      // Only attempt token validation if we have a token
+      if (sessionData.accessToken) {
+        try {
+          // Test the stored session by making a simple API call
+          const response = await this.getHttpClient().get(`${sessionData.serverUrl}/System/Info`, {
+            headers: {
+              'X-Emby-Token': sessionData.accessToken,
+            },
+          });
 
-      if (response.status === 200 && response.data) {
-        // Session is valid, get user info
-        const userResponse = await this.getHttpClient().get(`${sessionData.serverUrl}/Users/Me`, {
-          headers: {
-            'X-Emby-Token': sessionData.accessToken,
-          },
-        });
+          if (response.status === 200 && response.data) {
+            // Session is valid, get user info
+            const userResponse = await this.getHttpClient().get(
+              `${sessionData.serverUrl}/Users/Me`,
+              {
+                headers: {
+                  'X-Emby-Token': sessionData.accessToken,
+                },
+              }
+            );
 
-        if (userResponse.status === 200 && userResponse.data) {
-          // Auto-login successful
-          this.currentServer = {
-            name: response.data.ServerName || sessionData.serverUrl,
-            url: sessionData.serverUrl,
-            userId: userResponse.data.Id,
-            accessToken: sessionData.accessToken,
-          };
+            if (userResponse.status === 200 && userResponse.data) {
+              // Auto-login successful
+              this.currentServer = {
+                name: response.data.ServerName || sessionData.serverUrl,
+                url: sessionData.serverUrl,
+                userId: userResponse.data.Id,
+                accessToken: sessionData.accessToken,
+              };
 
-          this.currentUser = userResponse.data;
+              this.currentUser = userResponse.data;
 
-          debugLog('Auto-login successful for user: ' + this.currentUser.Name);
+              debugLog('Auto-login successful for user: ' + this.currentUser.Name);
 
-          this.hideLoginForm();
-          this.showMainContent();
-          this.showLogoutButton();
-          this.updateServerStatus(`Auto-connected as ${this.currentUser.Name}`, 'connected');
-          this.loadRecentItems();
+              this.hideLoginForm();
+              this.showMainContent();
+              this.showLogoutButton();
+              this.updateServerStatus(`Auto-connected as ${this.currentUser.Name}`, 'connected');
+              this.loadRecentItems();
 
-          return;
+              return;
+            }
+          }
+        } catch (tokenError) {
+          debugLog('Token validation failed: ' + tokenError.message);
         }
+      }
+
+      // Token is invalid/expired/missing - try re-authentication with stored credentials
+      if (sessionData.hasCredentials && sessionData.username && sessionData.password) {
+        debugLog('Token expired or invalid, attempting re-authentication with stored credentials');
+        await this.attemptReauthentication(sessionData);
+        return;
       }
     } catch (error) {
       debugLog('Auto-login failed: ' + error.message);
     }
 
-    // Auto-login failed, clear session and show login form
-    debugLog('Auto-login failed, clearing stored session');
+    // Auto-login failed and no stored credentials, show login form
+    debugLog('Auto-login failed, no stored credentials available');
     this.clearStoredSession();
-    this.updateServerStatus('Auto-login failed - please login manually', 'error');
+    this.updateServerStatus('Session expired - please login', 'error');
+  }
+
+  async attemptReauthentication(sessionData) {
+    try {
+      this.updateServerStatus('Re-authenticating...', 'connecting');
+      debugLog('Re-authenticating with stored credentials for: ' + sessionData.serverUrl);
+
+      const authResult = await this.authenticateUser(
+        sessionData.serverUrl,
+        sessionData.username,
+        sessionData.password
+      );
+
+      if (authResult.success) {
+        debugLog('Re-authentication successful');
+
+        this.currentServer = {
+          name: authResult.serverName || sessionData.serverUrl,
+          url: sessionData.serverUrl,
+          userId: authResult.user.Id,
+          accessToken: authResult.accessToken,
+        };
+        this.currentUser = authResult.user;
+
+        // Store new session with fresh token AND credentials
+        this.storeSessionData(
+          sessionData.serverUrl,
+          authResult.accessToken,
+          sessionData.username,
+          sessionData.password
+        );
+
+        this.hideLoginForm();
+        this.showMainContent();
+        this.showLogoutButton();
+        this.updateServerStatus(`Reconnected as ${authResult.user.Name}`, 'connected');
+        this.loadRecentItems();
+        return;
+      }
+
+      debugLog('Re-authentication failed: ' + authResult.error);
+    } catch (error) {
+      debugLog('Re-authentication error: ' + error.message);
+    }
+
+    // Re-authentication failed (wrong password, account disabled, etc.)
+    debugLog('Re-authentication failed, clearing credentials and showing login form');
+    this.clearStoredSession();
+    this.updateServerStatus('Re-authentication failed - please login', 'error');
   }
 
   clearStoredSession() {
@@ -314,12 +380,14 @@ class JellyfinSidebar {
     this.logout();
   }
 
-  storeSessionData(serverUrl, accessToken) {
+  storeSessionData(serverUrl, accessToken, username = null, password = null) {
     debugLog('Requesting session storage from main plugin');
     if (typeof iina !== 'undefined' && iina.postMessage) {
       iina.postMessage('store-session', {
         serverUrl: serverUrl,
         accessToken: accessToken,
+        username: username,
+        password: password,
       });
     }
   }
@@ -409,8 +477,8 @@ class JellyfinSidebar {
 
         this.currentUser = authResult.user;
 
-        // Store session data for future auto-login
-        this.storeSessionData(normalizedUrl, authResult.accessToken);
+        // Store session data for future auto-login (include credentials for re-auth)
+        this.storeSessionData(normalizedUrl, authResult.accessToken, username, password);
 
         this.hideLoginForm();
         this.showMainContent();
