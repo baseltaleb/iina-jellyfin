@@ -464,9 +464,21 @@
       </div>
     </div>
 
+    <script>
+      /**
+       * Debug logging helper function
+       * Only logs if debug logging is enabled in preferences
+       */
+      function debugLog(message) {
+        if (iina?.preferences?.get?.('debug_logging')) {
+          console.log('DEBUG: ' + message);
+        }
+      }
+    </script>
     <script src="components/MediaCard.js"></script>
     <script src="components/MediaGrid.js"></script>
     <script src="components/LibraryTab.js"></script>
+    <script src="components/Authentication.js"></script>
     <script src="sidebar.js"></script>
   </body>
 </html>

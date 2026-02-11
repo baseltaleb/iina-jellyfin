@@ -1,21 +1,9 @@
 /**
  * Jellyfin Sidebar Interface
- * Handles authentication and media browsing
+ * Handles media browsing, search, and playback
  */
 
-/* global LibraryTab */
-
-/**
- * Debug logging helper function
- * Only logs if debug logging is enabled in preferences
- */
-function debugLog(message) {
-  if (iina?.preferences?.get?.('debug_logging')) {
-    console.log(`DEBUG: ${message}`);
-  }
-}
-
-debugLog('Jellyfin Sidebar loaded');
+/* global LibraryTab, Authentication, debugLog */
 
 class JellyfinSidebar {
   constructor() {
@@ -27,7 +15,6 @@ class JellyfinSidebar {
     this.selectedSeason = null;
     this.selectedEpisode = null;
     this.searchTimeout = null;
-    this.pendingSessionData = null;
 
     this.init();
   }
@@ -82,14 +69,23 @@ class JellyfinSidebar {
   init() {
     this.setupEventListeners();
     this.setupTabNavigation();
-    this.setupMessageHandlers();
     this.initLibraryTabs();
 
-    // Request session data from main plugin
-    this.requestSessionData();
-
-    // Show login form initially (will be hidden if auto-login succeeds)
-    this.showLoginForm();
+    this.auth = new Authentication({
+      getHttpClient: () => this.getHttpClient(),
+      onAuthSuccess: ({ currentServer, currentUser }) => {
+        this.currentServer = currentServer;
+        this.currentUser = currentUser;
+        this.showMainContent();
+        this.loadRecentItems();
+      },
+      onLogout: () => {
+        this.currentServer = null;
+        this.currentUser = null;
+        this.hideMainContent();
+      },
+    });
+    this.auth.init();
   }
 
   initLibraryTabs() {
@@ -110,24 +106,6 @@ class JellyfinSidebar {
   }
 
   setupEventListeners() {
-    // Connection management
-    document.getElementById('connectBtn').addEventListener('click', () => {
-      this.showLoginForm();
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      this.logout();
-    });
-
-    // Login form
-    document.getElementById('loginBtn').addEventListener('click', () => {
-      this.login();
-    });
-
-    document.getElementById('cancelLoginBtn').addEventListener('click', () => {
-      this.hideLoginForm();
-    });
-
     // Search
     document.getElementById('searchInput').addEventListener('input', (e) => {
       this.debounceSearch(e.target.value);
@@ -148,18 +126,6 @@ class JellyfinSidebar {
 
     document.getElementById('cancelEpisodeBtn').addEventListener('click', () => {
       this.hideEpisodeSelection();
-    });
-
-    // Enter key handling
-    document.getElementById('password').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        this.login();
-      }
-    });
-
-    // Clear session button
-    document.getElementById('clearSessionBtn').addEventListener('click', () => {
-      this.clearStoredSession();
     });
   }
 
@@ -190,478 +156,6 @@ class JellyfinSidebar {
         }
       });
     });
-  }
-
-  setupMessageHandlers() {
-    // Listen for session data from main plugin
-    if (typeof iina !== 'undefined' && iina.onMessage) {
-      iina.onMessage('session-available', (data) => {
-        debugLog('Received session-available message: ' + JSON.stringify(data));
-        this.handleSessionAvailable(data);
-      });
-
-      iina.onMessage('session-data', (data) => {
-        debugLog('Received session-data message: ' + JSON.stringify(data));
-        this.handleSessionData(data);
-      });
-
-      iina.onMessage('session-cleared', () => {
-        debugLog('Received session-cleared message');
-        this.handleSessionCleared();
-      });
-    } else {
-      debugLog('iina.onMessage not available, session auto-login disabled');
-    }
-  }
-
-  requestSessionData() {
-    debugLog('Requesting session data from main plugin');
-    if (typeof iina !== 'undefined' && iina.postMessage) {
-      iina.postMessage('get-session');
-    } else {
-      debugLog('iina.postMessage not available, cannot request session data');
-    }
-  }
-
-  handleSessionAvailable(sessionData) {
-    if (!sessionData || !sessionData.serverUrl || !sessionData.accessToken) {
-      debugLog('Invalid session data received');
-      return;
-    }
-
-    debugLog('Attempting auto-login with session data');
-    this.attemptAutoLogin(sessionData);
-  }
-
-  handleSessionData(sessionData) {
-    if (!sessionData) {
-      debugLog('No stored session data available');
-      return;
-    }
-
-    debugLog('Retrieved stored session data, attempting auto-login');
-    this.attemptAutoLogin(sessionData);
-  }
-
-  handleSessionCleared() {
-    debugLog('Session cleared, logging out if currently logged in');
-    if (this.currentServer) {
-      this.logout();
-    }
-  }
-
-  async attemptAutoLogin(sessionData) {
-    try {
-      debugLog('Attempting auto-login to: ' + sessionData.serverUrl);
-
-      // Update UI to show connecting
-      this.updateServerStatus('Auto-connecting...', 'connecting');
-
-      // Only attempt token validation if we have a token
-      if (sessionData.accessToken) {
-        try {
-          // Test the stored session by making a simple API call
-          const response = await this.getHttpClient().get(`${sessionData.serverUrl}/System/Info`, {
-            headers: {
-              'X-Emby-Token': sessionData.accessToken,
-            },
-          });
-
-          if (response.status === 200 && response.data) {
-            // Session is valid, get user info
-            const userResponse = await this.getHttpClient().get(
-              `${sessionData.serverUrl}/Users/Me`,
-              {
-                headers: {
-                  'X-Emby-Token': sessionData.accessToken,
-                },
-              }
-            );
-
-            if (userResponse.status === 200 && userResponse.data) {
-              // Auto-login successful
-              this.currentServer = {
-                name: response.data.ServerName || sessionData.serverUrl,
-                url: sessionData.serverUrl,
-                userId: userResponse.data.Id,
-                accessToken: sessionData.accessToken,
-              };
-
-              this.currentUser = userResponse.data;
-
-              debugLog('Auto-login successful for user: ' + this.currentUser.Name);
-
-              this.hideLoginForm();
-              this.showMainContent();
-              this.showLogoutButton();
-              this.updateServerStatus(`Auto-connected as ${this.currentUser.Name}`, 'connected');
-              this.loadRecentItems();
-
-              return;
-            }
-          }
-        } catch (tokenError) {
-          debugLog('Token validation failed: ' + tokenError.message);
-        }
-      }
-
-      // Token is invalid/expired/missing - try re-authentication with stored credentials
-      if (sessionData.hasCredentials && sessionData.username && sessionData.password) {
-        debugLog('Token expired or invalid, attempting re-authentication with stored credentials');
-        await this.attemptReauthentication(sessionData);
-        return;
-      }
-    } catch (error) {
-      debugLog('Auto-login failed: ' + error.message);
-    }
-
-    // Auto-login failed and no stored credentials, show login form
-    debugLog('Auto-login failed, no stored credentials available');
-    this.clearStoredSession();
-    this.updateServerStatus('Session expired - please login', 'error');
-  }
-
-  async attemptReauthentication(sessionData) {
-    try {
-      this.updateServerStatus('Re-authenticating...', 'connecting');
-      debugLog('Re-authenticating with stored credentials for: ' + sessionData.serverUrl);
-
-      const authResult = await this.authenticateUser(
-        sessionData.serverUrl,
-        sessionData.username,
-        sessionData.password
-      );
-
-      if (authResult.success) {
-        debugLog('Re-authentication successful');
-
-        this.currentServer = {
-          name: authResult.serverName || sessionData.serverUrl,
-          url: sessionData.serverUrl,
-          userId: authResult.user.Id,
-          accessToken: authResult.accessToken,
-        };
-        this.currentUser = authResult.user;
-
-        // Store new session with fresh token AND credentials
-        this.storeSessionData(
-          sessionData.serverUrl,
-          authResult.accessToken,
-          sessionData.username,
-          sessionData.password
-        );
-
-        this.hideLoginForm();
-        this.showMainContent();
-        this.showLogoutButton();
-        this.updateServerStatus(`Reconnected as ${authResult.user.Name}`, 'connected');
-        this.loadRecentItems();
-        return;
-      }
-
-      debugLog('Re-authentication failed: ' + authResult.error);
-    } catch (error) {
-      debugLog('Re-authentication error: ' + error.message);
-    }
-
-    // Re-authentication failed (wrong password, account disabled, etc.)
-    debugLog('Re-authentication failed, clearing credentials and showing login form');
-    this.clearStoredSession();
-    this.updateServerStatus('Re-authentication failed - please login', 'error');
-  }
-
-  clearStoredSession() {
-    debugLog('Requesting session clear from main plugin');
-    if (typeof iina !== 'undefined' && iina.postMessage) {
-      iina.postMessage('clear-session');
-    }
-
-    // Also clear local state
-    this.logout();
-  }
-
-  storeSessionData(serverUrl, accessToken, username = null, password = null) {
-    debugLog('Requesting session storage from main plugin');
-    if (typeof iina !== 'undefined' && iina.postMessage) {
-      iina.postMessage('store-session', {
-        serverUrl: serverUrl,
-        accessToken: accessToken,
-        username: username,
-        password: password,
-      });
-    }
-  }
-
-  // Simple logout functionality
-  logout() {
-    debugLog('Logging out user');
-    this.currentUser = null;
-    this.currentServer = null;
-    this.updateServerStatus('Not connected');
-    this.hideMainContent();
-    this.showConnectButton();
-    this.clearLoginForm();
-  }
-
-  updateServerStatus(message, status = '') {
-    const statusEl = document.getElementById('serverStatus');
-    statusEl.textContent = message;
-    statusEl.className = `server-status ${status}`;
-  }
-
-  showConnectButton() {
-    document.getElementById('connectBtn').style.display = 'block';
-    document.getElementById('logoutBtn').style.display = 'none';
-  }
-
-  showLogoutButton() {
-    document.getElementById('connectBtn').style.display = 'none';
-    document.getElementById('logoutBtn').style.display = 'block';
-  }
-
-  // Authentication
-  showLoginForm() {
-    document.getElementById('loginSection').style.display = 'block';
-    document.getElementById('serverUrl').focus();
-  }
-
-  hideLoginForm() {
-    document.getElementById('loginSection').style.display = 'none';
-    this.clearLoginForm();
-  }
-
-  clearLoginForm() {
-    document.getElementById('serverUrl').value = '';
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('loginError').textContent = '';
-  }
-
-  async login() {
-    debugLog('Login function called');
-    const serverUrl = document.getElementById('serverUrl').value.trim();
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const errorEl = document.getElementById('loginError');
-
-    debugLog('Login inputs: ' + JSON.stringify({ serverUrl, username, password: '[HIDDEN]' }));
-
-    if (!serverUrl || !username || !password) {
-      errorEl.textContent = 'Please fill in all fields';
-      return;
-    }
-
-    // Normalize server URL
-    const normalizedUrl = this.normalizeServerUrl(serverUrl);
-    debugLog('Normalized URL: ' + normalizedUrl);
-
-    try {
-      document.getElementById('loginBtn').disabled = true;
-      document.getElementById('loginBtn').textContent = 'Logging in...';
-      errorEl.textContent = '';
-
-      debugLog('Starting authentication...');
-      const authResult = await this.authenticateUser(normalizedUrl, username, password);
-      debugLog('Authentication result: ' + JSON.stringify(authResult));
-
-      if (authResult.success) {
-        debugLog('Authentication successful');
-
-        // Create simple server object
-        this.currentServer = {
-          name: authResult.serverName || normalizedUrl,
-          url: normalizedUrl,
-          userId: authResult.user.Id,
-          accessToken: authResult.accessToken,
-        };
-
-        this.currentUser = authResult.user;
-
-        // Store session data for future auto-login (include credentials for re-auth)
-        this.storeSessionData(normalizedUrl, authResult.accessToken, username, password);
-
-        this.hideLoginForm();
-        this.showMainContent();
-        this.showLogoutButton();
-        this.updateServerStatus(`Connected as ${authResult.user.Name}`, 'connected');
-        this.loadRecentItems();
-      } else {
-        debugLog('Authentication failed: ' + authResult.error);
-        errorEl.textContent = authResult.error || 'Login failed';
-      }
-    } catch (error) {
-      debugLog('Login error: ' + error);
-      errorEl.textContent = 'Connection failed. Please check your server URL.';
-    } finally {
-      document.getElementById('loginBtn').disabled = false;
-      document.getElementById('loginBtn').textContent = 'Login';
-    }
-  }
-
-  normalizeServerUrl(url) {
-    if (!url || typeof url !== 'string') {
-      throw new Error('Invalid server URL');
-    }
-
-    // Validate URL format
-    url = url.trim();
-    if (!url) {
-      throw new Error('Server URL cannot be empty');
-    }
-
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'http://' + url;
-    }
-
-    // Basic URL validation using regex pattern
-    const urlPattern = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
-    if (!urlPattern.test(url)) {
-      throw new Error('Invalid server URL format');
-    }
-
-    return url.replace(/\/$/, ''); // Remove trailing slash
-  }
-
-  async authenticateUser(serverUrl, username, password) {
-    try {
-      debugLog('Starting authentication for: ' + serverUrl);
-      const authUrl = `${serverUrl}/Users/AuthenticateByName`;
-
-      // Validate input parameters
-      if (!username || !password) {
-        throw new Error('Username and password are required');
-      }
-
-      const authData = {
-        Username: username,
-        Pw: password,
-      };
-
-      debugLog('Auth URL: ' + authUrl);
-      debugLog(
-        'Auth data: ' +
-          JSON.stringify({
-            Username: username,
-            Pw: '[HIDDEN]',
-          })
-      );
-
-      // First, let's try to check if the server is reachable
-      const httpClient = this.getHttpClient();
-      try {
-        debugLog('Checking server reachability...');
-        const publicInfoResponse = await httpClient.get(`${serverUrl}/System/Info/Public`);
-        debugLog('Server public info: ' + JSON.stringify(publicInfoResponse));
-        debugLog('Server is reachable');
-      } catch (serverError) {
-        debugLog('Server reachability check failed: ' + serverError);
-        debugLog(
-          'Error details: ' +
-            JSON.stringify({
-              message: serverError.message,
-              status: serverError.status,
-              statusText: serverError.statusText,
-            })
-        );
-        // Don't fail immediately - the endpoint might work with curl but not IINA HTTP API
-        // Just log the warning and continue with authentication
-        debugLog('Warning: Server reachability check failed, but proceeding with authentication');
-      }
-
-      // Now try authentication with proper Jellyfin headers
-      const response = await httpClient.post(authUrl, {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'X-Emby-Authorization': `Emby UserId="${username}", Client="IINA Jellyfin Plugin", Device="IINA", DeviceId="IINA-${Date.now()}", Version="0.0.1", Token=""`,
-        },
-        data: JSON.stringify(authData),
-      });
-
-      debugLog('Auth response status: ' + response.status);
-      debugLog('Auth response data: ' + JSON.stringify(response.data));
-      debugLog('Auth response headers: ' + JSON.stringify(response.headers));
-
-      if (response.data && response.data.AccessToken) {
-        debugLog('Authentication successful');
-        // Get server info
-        let serverName = serverUrl;
-        try {
-          const infoResponse = await httpClient.get(`${serverUrl}/System/Info/Public`);
-          if (infoResponse.data && infoResponse.data.ServerName) {
-            serverName = infoResponse.data.ServerName;
-          }
-        } catch (infoError) {
-          debugLog('Could not get server info: ' + infoError);
-        }
-
-        return {
-          success: true,
-          user: response.data.User,
-          accessToken: response.data.AccessToken,
-          serverName: serverName,
-        };
-      } else {
-        debugLog('Authentication failed - no access token in response');
-        debugLog('Response data details: ' + JSON.stringify(response.data, null, 2));
-
-        // Check for specific error messages in the response
-        if (response.data && response.data.error) {
-          return {
-            success: false,
-            error: `Authentication failed: ${response.data.error}`,
-          };
-        } else if (response.status === 401) {
-          return {
-            success: false,
-            error: 'Invalid username or password',
-          };
-        } else if (response.status === 403) {
-          return {
-            success: false,
-            error: 'Access forbidden - check user permissions',
-          };
-        } else {
-          return {
-            success: false,
-            error: `Authentication failed with status ${response.status}`,
-          };
-        }
-      }
-    } catch (error) {
-      debugLog('Auth error details:', error);
-      debugLog('Auth error message:', error.message);
-      debugLog('Auth error status:', error.status);
-      debugLog('Auth error statusText:', error.statusText);
-
-      // Provide more specific error messages based on the error
-      if (error.status === 401) {
-        return {
-          success: false,
-          error: 'Invalid username or password',
-        };
-      } else if (error.status === 403) {
-        return {
-          success: false,
-          error: 'Access forbidden - check user permissions',
-        };
-      } else if (error.status === 404) {
-        return {
-          success: false,
-          error: 'Authentication endpoint not found - check server URL',
-        };
-      } else if (error.message && error.message.includes('Network')) {
-        return {
-          success: false,
-          error: 'Network error - check server URL and connectivity',
-        };
-      } else {
-        return {
-          success: false,
-          error: `Authentication failed: ${error.message || 'Unknown error'}`,
-        };
-      }
-    }
   }
 
   // UI Management
