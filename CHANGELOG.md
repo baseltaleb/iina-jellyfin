@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Extract URL parsing and API fetch functions into `src/jellyfin-api.js` module
+- Extract session management functions into `src/session.js` module
 
 ### Added
 
