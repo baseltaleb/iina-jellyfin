@@ -1665,16 +1665,6 @@ menu.addItem(
   )
 );
 
-if (preferences.get('auto_show_sidebar')) {
-  setTimeout(() => {
-    try {
-      global.onMessage('open', showJellyfinBrowser());
-    } catch (error) {
-      debugLog(`Failed to auto-show sidebar: ${error.message}`);
-    }
-  }, 500);
-}
-
 /**
  * Open media in a new IINA instance
  */

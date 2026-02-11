@@ -25,8 +25,7 @@
     "session_max_age_hours": 24,
     "jellyfin_persist_credentials": true,
     "autoplay_next_episode": true,
-    "sync_playback_progress": true,
-    "auto_show_sidebar": false
+    "sync_playback_progress": true
   },
   "ghRepo": "mhajder/iina-jellyfin",
   "ghVersion": 4
