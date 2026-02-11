@@ -11,6 +11,7 @@ export default [
       'src/jellyfin-api.js',
       'src/session.js',
       'src/subtitles.js',
+      'src/playback.js',
     ],
     languageOptions: {
       ecmaVersion: 2020,
