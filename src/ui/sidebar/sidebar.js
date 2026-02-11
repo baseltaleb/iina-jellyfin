@@ -3,8 +3,6 @@
  * Handles media browsing, search, and playback
  */
 
-/* global LibraryTab, Authentication, debugLog */
-
 class JellyfinSidebar {
   constructor() {
     debugLog('JellyfinSidebar constructor called');
@@ -77,7 +75,9 @@ class JellyfinSidebar {
         this.currentServer = currentServer;
         this.currentUser = currentUser;
         this.showMainContent();
-        this.loadRecentItems();
+        if (this.libraryTabs && this.libraryTabs.recent) {
+          this.libraryTabs.recent.onActivate();
+        }
       },
       onLogout: () => {
         this.currentServer = null;
@@ -90,6 +90,10 @@ class JellyfinSidebar {
 
   initLibraryTabs() {
     this.libraryTabs = {
+      recent: new RecentTab({
+        containerSelector: '#recentList',
+        getSidebar: () => this,
+      }),
       movies: new LibraryTab({
         tabId: 'movies',
         containerSelector: '#moviesGrid',
@@ -120,10 +124,6 @@ class JellyfinSidebar {
       this.playSelectedEpisode();
     });
 
-    document.getElementById('openEpisodeInJellyfinBtn').addEventListener('click', () => {
-      this.openSelectedEpisodeInJellyfin();
-    });
-
     document.getElementById('cancelEpisodeBtn').addEventListener('click', () => {
       this.hideEpisodeSelection();
     });
@@ -145,11 +145,6 @@ class JellyfinSidebar {
         tabContents.forEach((content) => content.classList.remove('active'));
         document.getElementById(tabName + 'Tab').classList.add('active');
 
-        // Load content if needed
-        if (tabName === 'recent' && this.currentUser) {
-          this.loadRecentItems();
-        }
-
         // Trigger library tab lifecycle
         if (this.libraryTabs && this.libraryTabs[tabName]) {
           this.libraryTabs[tabName].onActivate();
@@ -166,51 +161,6 @@ class JellyfinSidebar {
   hideMainContent() {
     document.getElementById('mainContent').style.display = 'none';
     this.hideEpisodeSelection();
-  }
-
-  // Media Browsing
-  async loadRecentItems() {
-    debugLog('loadRecentItems called');
-    if (!this.currentServer || !this.currentUser) {
-      debugLog('Missing server or user, skipping loadRecentItems');
-      return;
-    }
-
-    debugLog('Loading recent items for user:', this.currentUser.Name);
-    const recentList = document.getElementById('recentList');
-    recentList.innerHTML = '<div class="loading">Loading recent items...</div>';
-
-    try {
-      // Add query parameters to URL instead of using params property
-      const params = new URLSearchParams({
-        userId: this.currentUser.Id,
-        limit: 20,
-        fields: 'BasicSyncInfo,CanDelete,PrimaryImageAspectRatio,ProductionYear,Status,EndDate',
-        includeItemTypes: 'Movie,Series,Episode',
-      });
-
-      const fullUrl = `${this.currentServer.url}/Items/Latest?${params.toString()}`;
-
-      const response = await this.getHttpClient().get(fullUrl, {
-        headers: {
-          'X-Emby-Token': this.currentServer.accessToken,
-        },
-      });
-
-      debugLog('=== HTTP RESPONSE RECEIVED ===');
-      debugLog('Response data:', response.data);
-      debugLog('Response data type:', typeof response.data);
-      debugLog('Response data is array:', Array.isArray(response.data));
-
-      if (response.data && Array.isArray(response.data)) {
-        this.renderMediaList(response.data, recentList);
-      } else {
-        recentList.innerHTML = '<div class="empty-state">No recent items found</div>';
-      }
-    } catch (error) {
-      debugLog('Error loading recent items:', error);
-      recentList.innerHTML = '<div class="error">Failed to load recent items</div>';
-    }
   }
 
   debounceSearch(term) {
@@ -260,22 +210,6 @@ class JellyfinSidebar {
     }
   }
 
-  renderMediaList(items, container) {
-    debugLog('renderMediaList called with ' + (items?.length || 0) + ' items');
-    if (!items || items.length === 0) {
-      container.innerHTML = '<div class="empty-state">No items found</div>';
-      return;
-    }
-
-    container.innerHTML = '';
-    items.forEach((item) => {
-      debugLog('Creating media item element for: ' + item.Name + ' ' + item.Type);
-      const itemEl = this.createMediaItemElement(item);
-      container.appendChild(itemEl);
-    });
-    debugLog('Finished rendering ' + items.length + ' media items');
-  }
-
   renderSearchResults(hints, container) {
     if (!hints || hints.length === 0) {
       container.innerHTML = '<div class="empty-state">No results found</div>';
@@ -287,67 +221,6 @@ class JellyfinSidebar {
       const itemEl = this.createSearchItemElement(hint);
       container.appendChild(itemEl);
     });
-  }
-
-  createMediaItemElement(item) {
-    const itemEl = document.createElement('div');
-    itemEl.className = 'media-item';
-    itemEl.dataset.itemId = item.Id;
-    itemEl.dataset.itemType = item.Type;
-
-    const title = item.Name || 'Unknown Title';
-    const year = item.ProductionYear ? ` (${item.ProductionYear})` : '';
-    const type = item.Type;
-
-    let subtitle = '';
-    if (item.Type === 'Episode' && item.SeriesName) {
-      const season = item.ParentIndexNumber || '?';
-      const episode = item.IndexNumber || '?';
-      subtitle = `${item.SeriesName} - S${season}E${episode}`;
-    } else if (item.Type === 'Series') {
-      subtitle = 'TV Series';
-    } else if (item.Type === 'Movie') {
-      subtitle = 'Movie';
-    }
-
-    itemEl.innerHTML = `
-            <div class="media-title">${title}${year}</div>
-            ${subtitle ? `<div class="media-subtitle">${subtitle}</div>` : ''}
-            <div class="media-meta">${type}</div>
-            <div class="media-actions" style="margin-top: 6px; display: flex; gap: 4px;">
-                <button class="button media-action-btn" style="font-size: 10px; padding: 3px 6px;" data-action="select">
-                    ${item.Type === 'Series' ? 'Browse Episodes' : 'Play'}
-                </button>
-                <button class="button secondary media-action-btn" style="font-size: 10px; padding: 3px 6px;" data-action="open-jellyfin">
-                    Open in Jellyfin
-                </button>
-            </div>
-        `;
-
-    // Add event listeners for the action buttons
-    const actionButtons = itemEl.querySelectorAll('.media-action-btn');
-    debugLog(`Adding event listeners to ${actionButtons.length} action buttons`);
-    actionButtons.forEach((button, index) => {
-      debugLog(`Setting up button ${index}: ${button.dataset.action}`);
-      button.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const action = button.dataset.action;
-        debugLog(`Action button clicked: ${action} for item ${item.Name}`);
-
-        if (action === 'select') {
-          this.selectMediaItem(item);
-        } else if (action === 'open-jellyfin') {
-          this.openInJellyfin(item);
-        }
-      });
-    });
-
-    itemEl.addEventListener('click', () => {
-      debugLog('Media item clicked: ' + JSON.stringify(item));
-      this.selectMediaItem(item);
-    });
-
-    return itemEl;
   }
 
   createSearchItemElement(hint) {
@@ -363,40 +236,7 @@ class JellyfinSidebar {
     itemEl.innerHTML = `
             <div class="media-title">${title}${year}</div>
             <div class="media-meta">${type}</div>
-            <div class="media-actions" style="margin-top: 6px; display: flex; gap: 4px;">
-                <button class="button search-action-btn" style="font-size: 10px; padding: 3px 6px;" data-action="select">
-                    ${hint.Type === 'Series' ? 'Browse Episodes' : 'Play'}
-                </button>
-                <button class="button secondary search-action-btn" style="font-size: 10px; padding: 3px 6px;" data-action="open-jellyfin">
-                    Open in Jellyfin
-                </button>
-            </div>
         `;
-
-    // Add event listeners for the action buttons
-    const actionButtons = itemEl.querySelectorAll('.search-action-btn');
-    debugLog(`Adding event listeners to ${actionButtons.length} search action buttons`);
-    actionButtons.forEach((button, index) => {
-      debugLog(`Setting up search button ${index}: ${button.dataset.action}`);
-      button.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const action = button.dataset.action;
-        debugLog(`Search action button clicked: ${action} for item ${hint.Name}`);
-
-        if (action === 'select') {
-          this.selectSearchItem(hint);
-        } else if (action === 'open-jellyfin') {
-          // For search hints, we need to create a basic item object
-          const searchItem = {
-            Id: hint.ItemId,
-            Type: hint.Type,
-            Name: hint.Name,
-            ProductionYear: hint.ProductionYear,
-          };
-          this.openInJellyfin(searchItem);
-        }
-      });
-    });
 
     itemEl.addEventListener('click', () => {
       this.selectSearchItem(hint);
@@ -541,7 +381,6 @@ class JellyfinSidebar {
               episodeEl.classList.add('selected');
               this.selectedEpisode = episode;
               document.getElementById('playEpisodeBtn').disabled = false;
-              document.getElementById('openEpisodeInJellyfinBtn').disabled = false;
             });
           } else {
             // Add cursor indicator for unavailable episodes
@@ -566,75 +405,12 @@ class JellyfinSidebar {
     }
   }
 
-  openSelectedEpisodeInJellyfin() {
-    debugLog('openSelectedEpisodeInJellyfin called');
-
-    if (this.selectedEpisode) {
-      debugLog(`Opening selected episode in Jellyfin: ${this.selectedEpisode.Name}`);
-      this.openInJellyfin(this.selectedEpisode);
-    } else {
-      debugLog('No episode selected');
-    }
-  }
-
   hideEpisodeSelection() {
     document.getElementById('episodeSection').style.display = 'none';
     document.getElementById('mainContent').style.display = 'block';
     this.selectedEpisode = null;
     this.selectedSeason = null;
     document.getElementById('playEpisodeBtn').disabled = true;
-    document.getElementById('openEpisodeInJellyfinBtn').disabled = true;
-  }
-
-  /**
-   * Open a media item in the Jellyfin web interface
-   * @param {Object} item - The media item (episode, movie, series) to open
-   */
-  openInJellyfin(item) {
-    if (!this.currentServer || !item) {
-      debugLog('Cannot open in Jellyfin: missing server or item');
-      debugLog('Debug info:', {
-        hasServer: !!this.currentServer,
-        hasItem: !!item,
-        serverUrl: this.currentServer?.url,
-        itemId: item?.Id,
-        itemType: item?.Type,
-      });
-      return;
-    }
-
-    try {
-      debugLog(`Opening item in Jellyfin: ${item.Name} (${item.Type})`);
-      debugLog('Item details:', item);
-      debugLog('Server details:', this.currentServer);
-
-      // Construct the Jellyfin web interface URL
-      const jellyfinUrl = `${this.currentServer.url}/web/index.html#!/details?id=${item.Id}`;
-
-      debugLog(`Constructed Jellyfin URL: ${jellyfinUrl}`);
-
-      // Use IINA's postMessage API to request opening the URL in default browser
-      debugLog('Using IINA postMessage to open URL in default browser');
-
-      // Send message to main IINA process to open URL
-      const messageData = {
-        url: jellyfinUrl,
-        title: `${item.Name} - Jellyfin`,
-      };
-
-      debugLog(`Sending message: ${JSON.stringify(messageData)}`);
-      iina.postMessage('open-external-url', messageData);
-
-      debugLog('Successfully sent open-external-url message to IINA');
-    } catch (error) {
-      debugLog('Error in openInJellyfin:', error);
-
-      // Show error feedback to user
-      const errorMessage = `Failed to open Jellyfin page: ${error.message}`;
-      if (typeof iina !== 'undefined' && iina.core && iina.core.osd) {
-        iina.core.osd(errorMessage);
-      }
-    }
   }
 
   /**

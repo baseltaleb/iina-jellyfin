@@ -401,9 +401,7 @@
         <div id="recentTab" class="tab-content active">
           <div class="media-section">
             <div class="section-title">Recently Added</div>
-            <div id="recentList" class="media-list">
-              <div class="loading">Loading recent items...</div>
-            </div>
+            <div id="recentList" class="media-grid"></div>
           </div>
         </div>
 
@@ -456,9 +454,6 @@
         </div>
         <div style="display: flex; gap: 8px; margin-top: 8px">
           <button id="playEpisodeBtn" class="button" disabled>Play Episode</button>
-          <button id="openEpisodeInJellyfinBtn" class="button secondary" disabled>
-            Open in Jellyfin
-          </button>
         </div>
         <button id="cancelEpisodeBtn" class="button secondary" style="margin-top: 8px">Back</button>
       </div>
@@ -477,6 +472,7 @@
     </script>
     <script src="components/MediaCard.js"></script>
     <script src="components/MediaGrid.js"></script>
+    <script src="components/RecentTab.js"></script>
     <script src="components/LibraryTab.js"></script>
     <script src="components/Authentication.js"></script>
     <script src="sidebar.js"></script>
