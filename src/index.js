@@ -4,7 +4,6 @@
 
 const {
   core,
-  console,
   menu,
   event,
   http,
@@ -17,7 +16,8 @@ const {
   playlist,
 } = iina;
 
-const { base64Encode, base64Decode } = require('./utils.js');
+const { base64Encode, base64Decode, debugLog, secondsToTicks, ticksToSeconds } =
+  require('./utils.js');
 
 // Plugin state
 let lastJellyfinUrl = null;
@@ -33,16 +33,6 @@ let lastProgressReportTime = 0; // Last time progress was reported (ms)
 const PROGRESS_REPORT_INTERVAL = 10000; // Report progress every 10 seconds (ms)
 const WATCHED_THRESHOLD = 0.95; // Consider watched if 95% complete
 const END_THRESHOLD_SECONDS = 30; // Consider near end if within last 30 seconds
-
-/**
- * Debug logging helper function
- * Only logs if debug logging is enabled in preferences
- */
-function debugLog(message) {
-  if (preferences.get('debug_logging')) {
-    console.log(`DEBUG: ${message}`);
-  }
-}
 
 debugLog('Jellyfin Subtitles Plugin loaded');
 
@@ -209,24 +199,6 @@ async function fetchItemMetadata(serverBase, itemId, apiKey) {
     debugLog(`Error fetching item metadata: ${error.message}`);
     throw error;
   }
-}
-
-/**
- * Convert seconds to Jellyfin ticks (1 tick = 10000 ms = 0.00001 seconds)
- * @param {number} seconds - Time in seconds
- * @returns {number} Time in ticks
- */
-function secondsToTicks(seconds) {
-  return Math.round(seconds * 10000000);
-}
-
-/**
- * Convert Jellyfin ticks to seconds
- * @param {number} ticks - Time in ticks
- * @returns {number} Time in seconds
- */
-function ticksToSeconds(ticks) {
-  return ticks / 10000000;
 }
 
 /**

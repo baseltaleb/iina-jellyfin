@@ -2,6 +2,8 @@
  * Utility functions for IINA Jellyfin Plugin
  */
 
+const { console, preferences } = iina;
+
 /**
  * Base64 encode a string (simple implementation for plugin environment)
  * @param {string} str - String to encode
@@ -45,4 +47,32 @@ function base64Decode(str) {
   return result;
 }
 
-module.exports = { base64Encode, base64Decode };
+/**
+ * Debug logging helper function
+ * Only logs if debug logging is enabled in preferences
+ */
+function debugLog(message) {
+  if (preferences.get('debug_logging')) {
+    console.log(`DEBUG: ${message}`);
+  }
+}
+
+/**
+ * Convert seconds to Jellyfin ticks (1 tick = 10000 ms = 0.00001 seconds)
+ * @param {number} seconds - Time in seconds
+ * @returns {number} Time in ticks
+ */
+function secondsToTicks(seconds) {
+  return Math.round(seconds * 10000000);
+}
+
+/**
+ * Convert Jellyfin ticks to seconds
+ * @param {number} ticks - Time in ticks
+ * @returns {number} Time in seconds
+ */
+function ticksToSeconds(ticks) {
+  return ticks / 10000000;
+}
+
+module.exports = { base64Encode, base64Decode, debugLog, secondsToTicks, ticksToSeconds };
