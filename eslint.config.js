@@ -4,17 +4,7 @@ export default [
   js.configs.recommended,
   {
     // Main plugin files (CommonJS modules)
-    files: [
-      'src/index.js',
-      'src/global.js',
-      'src/utils.js',
-      'src/jellyfin-api.js',
-      'src/session.js',
-      'src/subtitles.js',
-      'src/playback.js',
-      'src/metadata.js',
-      'src/autoplay.js',
-    ],
+    files: ['src/**/*.js', '!src/ui/**/*.js'],
     languageOptions: {
       ecmaVersion: 2020,
       sourceType: 'commonjs',
