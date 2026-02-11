@@ -13,6 +13,7 @@ export default [
       'src/subtitles.js',
       'src/playback.js',
       'src/metadata.js',
+      'src/autoplay.js',
     ],
     languageOptions: {
       ecmaVersion: 2020,
