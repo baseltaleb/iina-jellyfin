@@ -12,6 +12,7 @@ export default [
       'src/session.js',
       'src/subtitles.js',
       'src/playback.js',
+      'src/metadata.js',
     ],
     languageOptions: {
       ecmaVersion: 2020,

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract session management functions into `src/session.js` module
 - Extract subtitle downloading functions into `src/subtitles.js` module
 - Extract playback tracking and progress sync functions into `src/playback.js` module
+- Extract video title/metadata logic into `src/metadata.js` module
 
 ### Added
 
