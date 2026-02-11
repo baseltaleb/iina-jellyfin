@@ -3,11 +3,11 @@ import js from '@eslint/js';
 export default [
   js.configs.recommended,
   {
-    // Main plugin files
-    files: ['src/index.js', 'src/global.js'],
+    // Main plugin files (CommonJS modules)
+    files: ['src/index.js', 'src/global.js', 'src/utils.js', 'src/jellyfin-api.js'],
     languageOptions: {
       ecmaVersion: 2020,
-      sourceType: 'module',
+      sourceType: 'commonjs',
       globals: {
         console: 'readonly',
         process: 'readonly',
@@ -16,8 +16,8 @@ export default [
         __filename: 'readonly',
         global: 'readonly',
         require: 'readonly',
-        module: 'readonly',
-        exports: 'readonly',
+        module: 'writable',
+        exports: 'writable',
         iina: 'readonly', // IINA plugin global
         setTimeout: 'readonly', // Available in IINA plugin context
         clearTimeout: 'readonly', // Available in IINA plugin context
@@ -33,10 +33,8 @@ export default [
       curly: ['error', 'multi-line'],
       'no-eval': 'error',
       'no-implied-eval': 'error',
-      strict: ['error', 'global'],
       'no-shadow': 'error',
       'no-redeclare': 'error',
-      'no-duplicate-imports': 'error',
     },
   },
   {
