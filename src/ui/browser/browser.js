@@ -1,11 +1,11 @@
 /**
- * Jellyfin Sidebar Interface
+ * Jellyfin Browser Interface
  * Handles media browsing, search, and playback
  */
 
-class JellyfinSidebar {
+class JellyfinBrowser {
   constructor() {
-    debugLog('JellyfinSidebar constructor called');
+    debugLog('JellyfinBrowser constructor called');
 
     this.currentUser = null;
     this.currentServer = null;
@@ -18,7 +18,7 @@ class JellyfinSidebar {
   }
 
   getHttpClient() {
-    // Use browser fetch API since sidebar runs in webview context
+    // Use browser fetch API since this runs in webview context
     return {
       get: (url, options = {}) => this.fetchHttpRequest('GET', url, options),
       post: (url, options = {}) => this.fetchHttpRequest('POST', url, options),
@@ -92,19 +92,19 @@ class JellyfinSidebar {
     this.libraryTabs = {
       recent: new RecentTab({
         containerSelector: '#recentList',
-        getSidebar: () => this,
+        getBrowser: () => this,
       }),
       movies: new LibraryTab({
         tabId: 'movies',
         containerSelector: '#moviesGrid',
         itemType: 'Movie',
-        getSidebar: () => this,
+        getBrowser: () => this,
       }),
       tvshows: new LibraryTab({
         tabId: 'tvshows',
         containerSelector: '#tvshowsGrid',
         itemType: 'Series',
-        getSidebar: () => this,
+        getBrowser: () => this,
       }),
     };
   }
@@ -519,20 +519,20 @@ class JellyfinSidebar {
   }
 }
 
-// Initialize sidebar when DOM is loaded
+// Initialize browser when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  debugLog('DOM loaded, initializing Jellyfin sidebar');
-  window.jellyfinSidebar = new JellyfinSidebar();
-  debugLog('Jellyfin sidebar initialized');
+  debugLog('DOM loaded, initializing Jellyfin browser');
+  window.jellyfinBrowser = new JellyfinBrowser();
+  debugLog('Jellyfin browser initialized');
 });
 
 // Expose for main plugin communication
-window.JellyfinSidebar = JellyfinSidebar;
+window.JellyfinBrowser = JellyfinBrowser;
 
 // Also try to initialize immediately if DOM is already loaded
 if (document.readyState === 'loading') {
   debugLog('DOM still loading, waiting for DOMContentLoaded');
 } else {
   debugLog('DOM already loaded, initializing immediately');
-  window.jellyfinSidebar = new JellyfinSidebar();
+  window.jellyfinBrowser = new JellyfinBrowser();
 }

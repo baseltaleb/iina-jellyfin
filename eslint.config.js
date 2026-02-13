@@ -38,7 +38,7 @@ export default [
     },
   },
   {
-    // UI/sidebar files
+    // UI/browser files
     files: ['src/ui/**/*.js'],
     languageOptions: {
       ecmaVersion: 2020,

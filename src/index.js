@@ -224,7 +224,7 @@ function showJellyfinBrowser() {
   if (!standaloneWindowInitialized) {
     debugLog('Initializing standalone Jellyfin browser window');
 
-    standaloneWindow.loadFile('src/ui/sidebar/index.html');
+    standaloneWindow.loadFile('src/ui/browser/index.html');
     standaloneWindow.setFrame({ x: 100, y: 100, width: 400, height: 600 });
     standaloneWindow.setProperty('title', 'Jellyfin Browser');
     standaloneWindow.setProperty('resizable', true);

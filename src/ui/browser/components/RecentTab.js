@@ -9,11 +9,11 @@ class RecentTab {
   /**
    * @param {Object} options
    * @param {string} options.containerSelector - CSS selector for the grid container
-   * @param {Function} options.getSidebar - Function that returns the JellyfinSidebar instance
+   * @param {Function} options.getBrowser - Function that returns the JellyfinBrowser instance
    */
-  constructor({ containerSelector, getSidebar }) {
+  constructor({ containerSelector, getBrowser }) {
     this.containerSelector = containerSelector;
-    this.getSidebar = getSidebar;
+    this.getBrowser = getBrowser;
 
     this.grid = null;
     this.loaded = false;
@@ -40,13 +40,13 @@ class RecentTab {
       return;
     }
 
-    const sidebar = this.getSidebar();
+    const browser = this.getBrowser();
 
     this.grid = new MediaGrid({
       container,
       onItemClick: (item) => {
-        if (sidebar && sidebar.selectMediaItem) {
-          sidebar.selectMediaItem(item);
+        if (browser && browser.selectMediaItem) {
+          browser.selectMediaItem(item);
         }
       },
       emptyMessage: 'No recent items found',
@@ -57,9 +57,9 @@ class RecentTab {
    * Load recent items from Jellyfin API
    */
   async loadItems() {
-    const sidebar = this.getSidebar();
+    const browser = this.getBrowser();
 
-    if (!sidebar || !sidebar.currentServer || !sidebar.currentUser) {
+    if (!browser || !browser.currentServer || !browser.currentUser) {
       debugLog('RecentTab: Missing server or user, skipping loadItems');
       return;
     }
@@ -79,13 +79,13 @@ class RecentTab {
     this.grid.setLoading(true);
 
     try {
-      const response = await this.fetchItems(sidebar);
+      const response = await this.fetchItems(browser);
 
       if (response.data && Array.isArray(response.data)) {
         this.grid.setItems(
           response.data,
-          sidebar.currentServer.url,
-          sidebar.currentServer.accessToken
+          browser.currentServer.url,
+          browser.currentServer.accessToken
         );
 
         // No pagination for Latest endpoint
@@ -105,23 +105,23 @@ class RecentTab {
   /**
    * Fetch recent items from Jellyfin API
    * Uses /Items/Latest endpoint which returns a flat array (not paginated)
-   * @param {Object} sidebar - JellyfinSidebar instance
+   * @param {Object} browser - JellyfinBrowser instance
    * @returns {Promise<Object>} API response
    */
-  async fetchItems(sidebar) {
+  async fetchItems(browser) {
     const params = new URLSearchParams({
-      userId: sidebar.currentUser.Id,
+      userId: browser.currentUser.Id,
       limit: this.limit.toString(),
       fields:
         'BasicSyncInfo,CanDelete,PrimaryImageAspectRatio,ProductionYear,Status,EndDate,ImageTags',
       includeItemTypes: 'Movie,Series,Episode',
     });
 
-    const fullUrl = `${sidebar.currentServer.url}/Items/Latest?${params.toString()}`;
+    const fullUrl = `${browser.currentServer.url}/Items/Latest?${params.toString()}`;
 
-    return sidebar.getHttpClient().get(fullUrl, {
+    return browser.getHttpClient().get(fullUrl, {
       headers: {
-        'X-Emby-Token': sidebar.currentServer.accessToken,
+        'X-Emby-Token': browser.currentServer.accessToken,
       },
     });
   }

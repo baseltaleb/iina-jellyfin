@@ -1,4 +1,4 @@
-/* Additional styling for Jellyfin sidebar */
+/* Additional styling for Jellyfin browser */
 
 /* Custom scrollbar for better dark theme integration */
 ::-webkit-scrollbar {
@@ -125,7 +125,7 @@
   border-color: #ef4444;
 }
 
-/* Responsive improvements for smaller sidebars */
+/* Responsive improvements for smaller windows */
 @media (max-width: 300px) {
   .server-controls {
     gap: 6px;

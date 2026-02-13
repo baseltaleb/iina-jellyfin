@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Move Jellyfin browser UI from sidebar panel to standalone window
+- Rename `src/ui/sidebar/` to `src/ui/browser/`, `JellyfinSidebar` class to `JellyfinBrowser`
 
 - Extract URL parsing and API fetch functions into `src/jellyfin-api.js` module
 - Extract session management functions into `src/session.js` module
@@ -20,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Movies and TV Shows tabs** in the sidebar with thumbnail grid layout
+- **Movies and TV Shows tabs** in the browser with thumbnail grid layout
   - New "Movies" tab displaying all movies from Jellyfin library
   - New "TV Shows" tab displaying all TV series from Jellyfin library
   - Thumbnail grid with poster images (2:3 aspect ratio)
@@ -32,11 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical Details
 
-- New modular component architecture in `src/ui/sidebar/components/`:
+- New modular component architecture in `src/ui/browser/components/`:
   - `MediaCard.js` - Reusable card component for media items
   - `MediaGrid.js` - Grid container with IntersectionObserver-based infinite scroll
   - `LibraryTab.js` - Tab controller with lazy loading and pagination
-- Responsive CSS Grid layout adapts to sidebar width
+- Responsive CSS Grid layout adapts to window width
 - Components use Jellyfin `/Users/{userId}/Items` API endpoint
 
 ## [0.3.0] - 2025-01-XX

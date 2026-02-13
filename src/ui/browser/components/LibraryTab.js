@@ -11,13 +11,13 @@ class LibraryTab {
    * @param {string} options.tabId - Tab identifier (e.g., 'movies', 'tvshows')
    * @param {string} options.containerSelector - CSS selector for the grid container
    * @param {string} options.itemType - Jellyfin item type ('Movie' or 'Series')
-   * @param {Function} options.getSidebar - Function that returns the JellyfinSidebar instance
+   * @param {Function} options.getBrowser - Function that returns the JellyfinBrowser instance
    */
-  constructor({ tabId, containerSelector, itemType, getSidebar }) {
+  constructor({ tabId, containerSelector, itemType, getBrowser }) {
     this.tabId = tabId;
     this.containerSelector = containerSelector;
     this.itemType = itemType;
-    this.getSidebar = getSidebar;
+    this.getBrowser = getBrowser;
 
     this.grid = null;
     this.loaded = false;
@@ -47,13 +47,13 @@ class LibraryTab {
       return;
     }
 
-    const sidebar = this.getSidebar();
+    const browser = this.getBrowser();
 
     this.grid = new MediaGrid({
       container,
       onItemClick: (item) => {
-        if (sidebar && sidebar.selectMediaItem) {
-          sidebar.selectMediaItem(item);
+        if (browser && browser.selectMediaItem) {
+          browser.selectMediaItem(item);
         }
       },
       emptyMessage: `No ${this.itemType === 'Movie' ? 'movies' : 'TV shows'} found`,
@@ -65,9 +65,9 @@ class LibraryTab {
    * Load items from Jellyfin API
    */
   async loadItems() {
-    const sidebar = this.getSidebar();
+    const browser = this.getBrowser();
 
-    if (!sidebar || !sidebar.currentServer || !sidebar.currentUser) {
+    if (!browser || !browser.currentServer || !browser.currentUser) {
       return;
     }
 
@@ -87,7 +87,7 @@ class LibraryTab {
     this.grid.setLoading(true);
 
     try {
-      const response = await this.fetchItems(sidebar);
+      const response = await this.fetchItems(browser);
 
       if (response.data && response.data.Items) {
         this.totalCount = response.data.TotalRecordCount || response.data.Items.length;
@@ -96,8 +96,8 @@ class LibraryTab {
 
         this.grid.setItems(
           response.data.Items,
-          sidebar.currentServer.url,
-          sidebar.currentServer.accessToken
+          browser.currentServer.url,
+          browser.currentServer.accessToken
         );
 
         if (!this.hasMore) {
@@ -130,9 +130,9 @@ class LibraryTab {
       return;
     }
 
-    const sidebar = this.getSidebar();
+    const browser = this.getBrowser();
 
-    if (!sidebar || !sidebar.currentServer || !sidebar.currentUser) {
+    if (!browser || !browser.currentServer || !browser.currentUser) {
       if (this.grid) {
         this.grid.hideLoadingMore();
       }
@@ -142,7 +142,7 @@ class LibraryTab {
     this.loading = true;
 
     try {
-      const response = await this.fetchItems(sidebar, this.startIndex);
+      const response = await this.fetchItems(browser, this.startIndex);
 
       if (response.data && response.data.Items && response.data.Items.length > 0) {
         this.startIndex += response.data.Items.length;
@@ -150,8 +150,8 @@ class LibraryTab {
 
         this.grid.appendItems(
           response.data.Items,
-          sidebar.currentServer.url,
-          sidebar.currentServer.accessToken
+          browser.currentServer.url,
+          browser.currentServer.accessToken
         );
 
         if (!this.hasMore) {
@@ -171,13 +171,13 @@ class LibraryTab {
 
   /**
    * Fetch items from Jellyfin API
-   * @param {Object} sidebar - JellyfinSidebar instance
+   * @param {Object} browser - JellyfinBrowser instance
    * @param {number} [startIndex=0] - Starting index for pagination
    * @returns {Promise<Object>} API response
    */
-  async fetchItems(sidebar, startIndex = 0) {
+  async fetchItems(browser, startIndex = 0) {
     const params = new URLSearchParams({
-      userId: sidebar.currentUser.Id,
+      userId: browser.currentUser.Id,
       includeItemTypes: this.itemType,
       sortBy: 'SortName',
       sortOrder: 'Ascending',
@@ -187,11 +187,11 @@ class LibraryTab {
       startIndex: startIndex.toString(),
     });
 
-    const fullUrl = `${sidebar.currentServer.url}/Users/${sidebar.currentUser.Id}/Items?${params.toString()}`;
+    const fullUrl = `${browser.currentServer.url}/Users/${browser.currentUser.Id}/Items?${params.toString()}`;
 
-    return sidebar.getHttpClient().get(fullUrl, {
+    return browser.getHttpClient().get(fullUrl, {
       headers: {
-        'X-Emby-Token': sidebar.currentServer.accessToken,
+        'X-Emby-Token': browser.currentServer.accessToken,
       },
     });
   }
