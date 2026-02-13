@@ -2,7 +2,7 @@
  * Jellyfin Session - Session storage, retrieval, and clearing
  */
 
-const { preferences, sidebar } = iina;
+const { preferences } = iina;
 const { debugLog, base64Encode, base64Decode } = require('./utils.js');
 
 /**
@@ -33,15 +33,6 @@ function storeJellyfinSession(serverBase, apiKey, username = null, password = nu
     preferences.sync();
 
     debugLog('Jellyfin session data stored successfully');
-
-    // Notify sidebar about available session
-    if (sidebar && sidebar.postMessage) {
-      sidebar.postMessage('session-available', {
-        serverUrl: serverBase,
-        accessToken: apiKey,
-        timestamp: Date.now(),
-      });
-    }
   } catch (error) {
     debugLog(`Error storing Jellyfin session: ${error.message}`);
   }
@@ -59,11 +50,6 @@ function clearJellyfinSession() {
     preferences.set('jellyfin_session_username', '');
     preferences.set('jellyfin_session_password', '');
     preferences.sync();
-
-    // Notify sidebar about cleared session
-    if (sidebar && sidebar.postMessage) {
-      sidebar.postMessage('session-cleared', {});
-    }
   } catch (error) {
     debugLog(`Error clearing Jellyfin session: ${error.message}`);
   }

@@ -2,7 +2,7 @@
  * IINA Jellyfin Plugin
  */
 
-const { core, menu, event, utils, preferences, sidebar, global, standaloneWindow } = iina;
+const { core, menu, event, utils, preferences, global, standaloneWindow } = iina;
 
 const { debugLog } = require('./utils.js');
 const { parseJellyfinUrl, isJellyfinUrl } = require('./jellyfin-api.js');
@@ -24,6 +24,7 @@ const { setupAutoplayForEpisode, resetAutoplayState } = require('./autoplay.js')
 // Plugin state
 let lastJellyfinUrl = null;
 let lastItemId = null;
+let standaloneWindowInitialized = false;
 
 debugLog('Jellyfin Subtitles Plugin loaded');
 
@@ -214,55 +215,28 @@ function manualSetTitle() {
 }
 
 /**
- * Show Jellyfin Browser - handles the case when no window is available
+ * Show Jellyfin Browser in a standalone window
  */
 function showJellyfinBrowser() {
-  try {
-    debugLog('Attempting to show Jellyfin browser');
+  debugLog('Attempting to show Jellyfin browser');
+  const sessionData = getStoredJellyfinSession();
 
-    // Try to show sidebar directly first
-    if (sidebar && sidebar.show) {
-      sidebar.show();
-      debugLog('Sidebar shown successfully');
-      return;
-    }
-  } catch (error) {
-    debugLog(`Direct sidebar.show() failed: ${error.message}`);
+  if (!standaloneWindowInitialized) {
+    debugLog('Initializing standalone Jellyfin browser window');
 
-    // Check if we have stored session data that could be useful
-    const sessionData = getStoredJellyfinSession();
-
-    // Always open in standalone window when sidebar isn't available
-    debugLog('Opening Jellyfin browser in standalone window');
-    openJellyfinStandaloneWindow(sessionData);
-  }
-}
-
-/**
- * Open Jellyfin browser in a standalone window
- */
-function openJellyfinStandaloneWindow(sessionData) {
-  try {
-    debugLog('Creating standalone Jellyfin browser window');
-
-    // Load the same sidebar HTML in standalone window
     standaloneWindow.loadFile('src/ui/sidebar/index.html');
-
-    // Set window properties
     standaloneWindow.setFrame({ x: 100, y: 100, width: 400, height: 600 });
     standaloneWindow.setProperty('title', 'Jellyfin Browser');
     standaloneWindow.setProperty('resizable', true);
     standaloneWindow.setProperty('minimizable', true);
 
-    // Set up message handlers for standalone window
     standaloneWindow.onMessage('get-session', () => {
-      standaloneWindow.postMessage('session-data', sessionData);
+      const currentSession = getStoredJellyfinSession();
+      standaloneWindow.postMessage('session-data', currentSession);
     });
 
     standaloneWindow.onMessage('play-media', (data) => {
       handlePlayMedia(data);
-      // Close standalone window after starting playback
-      standaloneWindow.close();
     });
 
     standaloneWindow.onMessage('clear-session', () => {
@@ -275,24 +249,23 @@ function openJellyfinStandaloneWindow(sessionData) {
       }
     });
 
-    // Open the window
-    standaloneWindow.open();
+    standaloneWindowInitialized = true;
+  }
 
-    // Send session data after a brief delay
-    setTimeout(() => {
-      standaloneWindow.postMessage('session-available', sessionData);
-    }, 1000);
+  standaloneWindow.open();
 
-    debugLog('Standalone Jellyfin browser window opened successfully');
+  setTimeout(() => {
     if (sessionData) {
-      core.osd(
-        `Jellyfin Browser opened in standalone window\nServer: ${sessionData.serverUrl.replace(/^https?:\/\//, '')}`
-      );
-    } else {
-      core.osd('Jellyfin Browser opened in standalone window\nPlease login to access your media');
+      standaloneWindow.postMessage('session-available', sessionData);
     }
-  } catch (error) {
-    debugLog(`Failed to create standalone window: ${error.message}`);
+  }, 1000);
+
+  if (sessionData) {
+    core.osd(
+      `Jellyfin Browser opened\nServer: ${sessionData.serverUrl.replace(/^https?:\/\//, '')}`
+    );
+  } else {
+    core.osd('Jellyfin Browser opened\nPlease login to access your media');
   }
 }
 
@@ -352,7 +325,7 @@ function openInNewInstance(streamUrl, title) {
 }
 
 /**
- * Handle media playback requests from sidebar
+ * Handle media playback requests
  */
 function handlePlayMedia(message) {
   debugLog('HANDLE PLAY MEDIA CALLED');
@@ -412,44 +385,4 @@ event.on('iina.window-will-close', () => {
 // Also handle file ended event
 event.on('mpv.eof-reached', () => {
   handleEofReached();
-});
-
-// Initialize sidebar when window is loaded
-event.on('iina.window-loaded', () => {
-  sidebar.loadFile('src/ui/sidebar/index.html');
-
-  // Set up message handler for sidebar playback requests
-  sidebar.onMessage('play-media', handlePlayMedia);
-
-  // Handle session requests from sidebar
-  sidebar.onMessage('get-session', () => {
-    const sessionData = getStoredJellyfinSession();
-    sidebar.postMessage('session-data', sessionData);
-  });
-
-  // Handle session clear requests from sidebar
-  sidebar.onMessage('clear-session', () => {
-    clearJellyfinSession();
-  });
-
-  // Handle session storage requests from sidebar (manual login)
-  sidebar.onMessage('store-session', (data) => {
-    if (data && data.serverUrl && data.accessToken) {
-      storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password);
-    }
-  });
-
-  // Also expose a global method for sidebar communication
-  global.playMedia = (streamUrl, title) => {
-    debugLog('Global playMedia called with:', streamUrl, title);
-    handlePlayMedia({ streamUrl, title });
-  };
-
-  // Send initial session data to sidebar after a brief delay
-  setTimeout(() => {
-    const sessionData = getStoredJellyfinSession();
-    if (sessionData) {
-      sidebar.postMessage('session-available', sessionData);
-    }
-  }, 500);
 });
