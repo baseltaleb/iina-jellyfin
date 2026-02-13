@@ -370,6 +370,12 @@ function handlePlayMedia(message) {
   }
 }
 
+// Auto-open Jellyfin browser on startup if enabled
+if (preferences.get('auto_open_browser')) {
+  debugLog('Auto-opening Jellyfin browser on startup');
+  showJellyfinBrowser();
+}
+
 // Event handlers
 event.on('iina.file-loaded', onFileLoaded);
 
