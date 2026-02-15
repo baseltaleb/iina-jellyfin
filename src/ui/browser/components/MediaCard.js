@@ -11,11 +11,13 @@ class MediaCard {
    * @param {string} options.accessToken - Jellyfin access token
    * @param {Function} options.onClick - Click handler callback
    */
-  constructor({ item, serverUrl, accessToken, onClick }) {
+  constructor({ item, serverUrl, accessToken, onClick, showProgressBar = false, subtitle = '' }) {
     this.item = item;
     this.serverUrl = serverUrl;
     this.accessToken = accessToken;
     this.onClick = onClick;
+    this.showProgressBar = showProgressBar;
+    this.subtitle = subtitle;
     this.element = null;
     this.selected = false;
   }
@@ -45,8 +47,21 @@ class MediaCard {
 
     const thumbnailUrl = this.getThumbnailUrl();
     const title = this.item.Name || 'Unknown Title';
-    const year = this.item.ProductionYear || '';
     const type = this.item.Type === 'Series' ? 'TV' : this.item.Type;
+
+    // Build optional subtitle overlay
+    const subtitleHtml = this.subtitle
+      ? `<span class="media-card__subtitle">${this.escapeHtml(this.subtitle)}</span>`
+      : '';
+
+    // Build optional progress bar
+    const percentage = this.item.UserData?.PlayedPercentage || 0;
+    const progressHtml =
+      this.showProgressBar && percentage > 0
+        ? `<div class="media-card__progress">
+            <div class="media-card__progress-bar" style="width: ${Math.round(percentage)}%"></div>
+          </div>`
+        : '';
 
     card.innerHTML = `
       <div class="media-card__poster">
@@ -64,8 +79,9 @@ class MediaCard {
         <div class="media-card__placeholder" style="${thumbnailUrl ? 'display: none;' : 'display: flex;'}">
           <span class="media-card__placeholder-icon">${this.item.Type === 'Series' ? '📺' : '🎬'}</span>
         </div>
-        ${year ? `<span class="media-card__year">${year}</span>` : ''}
+        ${subtitleHtml}
         <span class="media-card__badge">${type}</span>
+        ${progressHtml}
       </div>
       <div class="media-card__title" title="${this.escapeHtml(title)}">${this.escapeHtml(title)}</div>
     `;
