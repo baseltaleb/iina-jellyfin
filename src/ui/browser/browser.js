@@ -120,8 +120,8 @@ class JellyfinBrowser {
         this.currentServer = currentServer;
         this.currentUser = currentUser;
         this.showMainContent();
-        if (this.libraryTabs && this.libraryTabs.recent) {
-          this.libraryTabs.recent.onActivate();
+        if (this.libraryTabs && this.libraryTabs.home) {
+          this.libraryTabs.home.onActivate();
         }
       },
       onLogout: () => {
@@ -135,6 +135,10 @@ class JellyfinBrowser {
 
   initLibraryTabs() {
     this.libraryTabs = {
+      home: new HomeTab({
+        containerSelector: '#homeTab',
+        getBrowser: () => this,
+      }),
       recent: new RecentTab({
         containerSelector: '#recentList',
         getBrowser: () => this,
