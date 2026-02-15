@@ -5,7 +5,9 @@
 const { debugLog, secondsToTicks, ticksToSeconds } = require('./utils.js');
 const { fetchPlaybackInfo, fetchItemMetadata, fetchCurrentUserId } = require('./jellyfin-api.js');
 
-const { core, http, preferences } = iina;
+const { proxyPost } = require('./proxy-http.js');
+
+const { core, preferences } = iina;
 
 // Playback tracking state
 let currentPlaybackSession = null; // Current Jellyfin playback session info
@@ -110,7 +112,7 @@ async function reportPlaybackStart(serverBase, itemId, apiKey, playSessionId, me
     const url = `${serverBase}/Sessions/Playing?api_key=${apiKey}`;
     debugLog(`Reporting playback start for item: ${itemId}`);
 
-    const response = await http.post(url, {
+    const response = await proxyPost(url, {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -168,7 +170,7 @@ async function reportPlaybackProgress(
     const positionTicks = secondsToTicks(positionSeconds);
     const url = `${serverBase}/Sessions/Playing/Progress?api_key=${apiKey}`;
 
-    const response = await http.post(url, {
+    const response = await proxyPost(url, {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -225,7 +227,7 @@ async function reportPlaybackStop(
 
     debugLog(`Reporting playback stop: position=${positionSeconds}s (${positionTicks} ticks)`);
 
-    const response = await http.post(url, {
+    const response = await proxyPost(url, {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -277,7 +279,7 @@ async function markAsWatched(serverBase, itemId, apiKey, userId) {
     const url = `${serverBase}/UserPlayedItems/${itemId}?userId=${userId}&api_key=${apiKey}`;
     debugLog(`Marking item as watched: ${itemId} for user: ${userId}`);
 
-    const response = await http.post(url, {
+    const response = await proxyPost(url, {
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',

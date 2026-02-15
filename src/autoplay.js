@@ -4,7 +4,8 @@
 
 const { debugLog } = require('./utils.js');
 const { fetchItemMetadata } = require('./jellyfin-api.js');
-const { http, preferences, playlist, core } = iina;
+const { proxyGet } = require('./proxy-http.js');
+const { preferences, playlist, core } = iina;
 
 // State variables
 let lastProcessedEpisodeId = null; // Track last processed episode to prevent duplicates
@@ -24,7 +25,7 @@ async function fetchSeriesEpisodes(serverBase, seriesId, seasonId, apiKey) {
       'fields=' + encodeURIComponent('MediaSources,Path,LocationType,IsFolder,CanDownload'),
     ].join('&');
 
-    const response = await http.get(
+    const response = await proxyGet(
       `${serverBase}/Shows/${seriesId}/Episodes?${queryParams}&api_key=${apiKey}`,
       {
         headers: {

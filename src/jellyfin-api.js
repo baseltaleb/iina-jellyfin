@@ -2,8 +2,8 @@
  * Jellyfin API - URL parsing and core API fetch functions
  */
 
-const { http } = iina;
 const { debugLog } = require('./utils.js');
+const { proxyGet } = require('./proxy-http.js');
 
 /**
  * Parse Jellyfin URL to extract server info and item ID
@@ -101,7 +101,7 @@ async function fetchPlaybackInfo(serverBase, itemId, apiKey) {
     const playbackUrl = `${serverBase}/Items/${itemId}/PlaybackInfo?api_key=${apiKey}`;
     debugLog(`Fetching playback info from: ${playbackUrl}`);
 
-    const response = await http.get(playbackUrl, {
+    const response = await proxyGet(playbackUrl, {
       headers: {
         Accept: 'application/json',
       },
@@ -140,7 +140,7 @@ async function fetchItemMetadata(serverBase, itemId, apiKey) {
     const metadataUrl = `${serverBase}/Items/${itemId}?api_key=${apiKey}`;
     debugLog(`Fetching item metadata from: ${metadataUrl}`);
 
-    const response = await http.get(metadataUrl, {
+    const response = await proxyGet(metadataUrl, {
       headers: {
         Accept: 'application/json',
       },
@@ -181,7 +181,7 @@ async function fetchCurrentUserId(serverBase, apiKey) {
     const url = `${serverBase}/Users/Me?api_key=${apiKey}`;
     debugLog(`Fetching current user ID from: ${url}`);
 
-    const response = await http.get(url, {
+    const response = await proxyGet(url, {
       headers: { Accept: 'application/json' },
     });
 

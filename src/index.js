@@ -20,13 +20,45 @@ const {
 } = require('./playback.js');
 const { setVideoTitleFromMetadata } = require('./metadata.js');
 const { setupAutoplayForEpisode, resetAutoplayState } = require('./autoplay.js');
+const { initHttpProxy } = require('./proxy-http.js');
 
 // Plugin state
 let lastJellyfinUrl = null;
 let lastItemId = null;
-let standaloneWindowInitialized = false;
 
 debugLog('Jellyfin Subtitles Plugin loaded');
+
+// Register proxy message handlers BEFORE loadFile so the proxy-ready handler
+// is in place by the time the WebView executes its IIFE.
+initHttpProxy();
+
+// Load browser WebView early so proxy + message handlers are registered.
+// Note: the WebView won't execute JS until standaloneWindow.open() is called
+// (either by auto_open_browser or the user). Until then, proxyGet/proxyPost
+// fall back to IINA's native http.get/http.post (safe due to 3s deferral).
+standaloneWindow.loadFile('src/ui/browser/index.html');
+standaloneWindow.setProperty('title', 'Jellyfin Browser');
+standaloneWindow.setProperty('resizable', true);
+standaloneWindow.setProperty('minimizable', true);
+
+standaloneWindow.onMessage('get-session', () => {
+  const currentSession = getStoredJellyfinSession();
+  standaloneWindow.postMessage('session-data', currentSession);
+});
+
+standaloneWindow.onMessage('play-media', (data) => {
+  handlePlayMedia(data);
+});
+
+standaloneWindow.onMessage('clear-session', () => {
+  clearJellyfinSession();
+});
+
+standaloneWindow.onMessage('store-session', (data) => {
+  if (data && data.serverUrl && data.accessToken) {
+    storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password);
+  }
+});
 
 /**
  * Handle file loaded event
@@ -46,42 +78,57 @@ function onFileLoaded(fileUrl) {
       lastItemId = jellyfinInfo.itemId;
       debugLog(`Stored Jellyfin media for manual download: ${jellyfinInfo.itemId}`);
 
-      // Store session data for auto-login if enabled
+      // Store session data for auto-login if enabled (synchronous, safe)
       storeJellyfinSession(jellyfinInfo.serverBase, jellyfinInfo.apiKey);
 
-      // Start playback tracking for progress sync
-      if (preferences.get('sync_playback_progress')) {
-        debugLog(`Starting playback tracking for: ${jellyfinInfo.itemId}`);
-        startPlaybackTracking(jellyfinInfo.serverBase, jellyfinInfo.itemId, jellyfinInfo.apiKey);
-      } else {
-        debugLog('Playback sync disabled');
-      }
+      // Defer ALL HTTP work by 3s to avoid main-thread contention with mpv's
+      // initial buffer fill. The plugin JS runtime and mpv share the main thread;
+      // HTTP callbacks resolving during buffering cause a deadlock freeze.
+      // After 3s mpv has stabilized and HTTP is safe (via proxy or fallback).
+      const deferredInfo = { ...jellyfinInfo };
+      debugLog(`Deferring HTTP work 3s for: ${deferredInfo.itemId}`);
+      setTimeout(() => {
+        // Start playback tracking for progress sync
+        if (preferences.get('sync_playback_progress')) {
+          debugLog(`Starting playback tracking for: ${deferredInfo.itemId}`);
+          startPlaybackTracking(
+            deferredInfo.serverBase,
+            deferredInfo.itemId,
+            deferredInfo.apiKey
+          );
+        }
 
-      // Set video title from metadata if enabled
-      if (preferences.get('set_video_title')) {
-        debugLog(`Setting video title from metadata for: ${jellyfinInfo.itemId}`);
-        setVideoTitleFromMetadata(
-          jellyfinInfo.serverBase,
-          jellyfinInfo.itemId,
-          jellyfinInfo.apiKey
-        );
-      }
+        // Set video title from metadata if enabled
+        if (preferences.get('set_video_title')) {
+          debugLog(`Setting video title from metadata for: ${deferredInfo.itemId}`);
+          setVideoTitleFromMetadata(
+            deferredInfo.serverBase,
+            deferredInfo.itemId,
+            deferredInfo.apiKey
+          );
+        }
 
-      // Setup autoplay for TV episodes if enabled
-      if (preferences.get('autoplay_next_episode')) {
-        debugLog(`Setting up autoplay for episode (itemId): ${jellyfinInfo.itemId}`);
-        // Reset autoplay state to allow processing new episode
-        resetAutoplayState();
-        setupAutoplayForEpisode(jellyfinInfo.serverBase, jellyfinInfo.itemId, jellyfinInfo.apiKey);
-      }
+        // Setup autoplay for TV episodes if enabled
+        if (preferences.get('autoplay_next_episode')) {
+          debugLog(`Setting up autoplay for episode (itemId): ${deferredInfo.itemId}`);
+          resetAutoplayState();
+          setupAutoplayForEpisode(
+            deferredInfo.serverBase,
+            deferredInfo.itemId,
+            deferredInfo.apiKey
+          );
+        }
 
-      // Only auto-download if enabled
-      if (preferences.get('auto_download_enabled')) {
-        debugLog(`Auto-downloading subtitles for: ${jellyfinInfo.itemId}`);
-        downloadAllSubtitles(jellyfinInfo.serverBase, jellyfinInfo.itemId, jellyfinInfo.apiKey);
-      } else {
-        debugLog('Auto download disabled, but Jellyfin URL stored for manual download');
-      }
+        // Auto-download subtitles if enabled
+        if (preferences.get('auto_download_enabled')) {
+          debugLog(`Auto-downloading subtitles for: ${deferredInfo.itemId}`);
+          downloadAllSubtitles(
+            deferredInfo.serverBase,
+            deferredInfo.itemId,
+            deferredInfo.apiKey
+          );
+        }
+      }, 3000);
     } else {
       debugLog('Failed to parse Jellyfin URL');
     }
@@ -215,43 +262,14 @@ function manualSetTitle() {
 }
 
 /**
- * Show Jellyfin Browser in a standalone window
+ * Show Jellyfin Browser in a standalone window.
+ * The window is already loaded at plugin init; this repositions and brings it to front.
  */
 function showJellyfinBrowser() {
-  debugLog('Attempting to show Jellyfin browser');
+  debugLog('Opening Jellyfin browser window');
   const sessionData = getStoredJellyfinSession();
 
-  if (!standaloneWindowInitialized) {
-    debugLog('Initializing standalone Jellyfin browser window');
-
-    standaloneWindow.loadFile('src/ui/browser/index.html');
-    standaloneWindow.setFrame({ x: 100, y: 100, width: 400, height: 600 });
-    standaloneWindow.setProperty('title', 'Jellyfin Browser');
-    standaloneWindow.setProperty('resizable', true);
-    standaloneWindow.setProperty('minimizable', true);
-
-    standaloneWindow.onMessage('get-session', () => {
-      const currentSession = getStoredJellyfinSession();
-      standaloneWindow.postMessage('session-data', currentSession);
-    });
-
-    standaloneWindow.onMessage('play-media', (data) => {
-      handlePlayMedia(data);
-    });
-
-    standaloneWindow.onMessage('clear-session', () => {
-      clearJellyfinSession();
-    });
-
-    standaloneWindow.onMessage('store-session', (data) => {
-      if (data && data.serverUrl && data.accessToken) {
-        storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password);
-      }
-    });
-
-    standaloneWindowInitialized = true;
-  }
-
+  standaloneWindow.setFrame({ x: 100, y: 100, width: 400, height: 600 });
   standaloneWindow.open();
 
   setTimeout(() => {

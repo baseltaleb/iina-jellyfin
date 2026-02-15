@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix main-thread freeze when playing media in same window by deferring HTTP work 3s and routing API calls through browser WebView proxy
+
 ### Changed
 
 - Move Jellyfin browser UI from sidebar panel to standalone window
