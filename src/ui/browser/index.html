@@ -242,6 +242,41 @@
         cursor: pointer;
         background: #333;
         font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .episode-label {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .episode-watched-badge {
+        color: #22c55e;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      .episode-progress {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .episode-progress-bar {
+        height: 100%;
+        background: #0066cc;
       }
 
       .episode-item:hover {

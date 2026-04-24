@@ -408,19 +408,31 @@ class JellyfinBrowser {
           const episodeEl = document.createElement('div');
           const isAvailable = this.isEpisodeAvailable(episode);
 
-          episodeEl.className = `episode-item ${!isAvailable ? 'unavailable' : ''}`;
+          const isWatched = episode.UserData?.Played === true;
+          const watchPercentage = episode.UserData?.PlayedPercentage || 0;
+          const watchedClass = isWatched ? 'watched' : watchPercentage > 0 ? 'in-progress' : '';
+
+          episodeEl.className =
+            `episode-item ${!isAvailable ? 'unavailable' : ''} ${watchedClass}`.trim();
           episodeEl.dataset.episodeId = episode.Id;
           episodeEl.dataset.available = isAvailable.toString();
 
           const episodeNum = episode.IndexNumber || '?';
           const title = episode.Name || `Episode ${episodeNum}`;
 
-          // Add availability indicator
           const availabilityIcon = isAvailable
             ? ''
             : ' <span class="unavailable-icon" title="Episode not available on server">⚠️</span>';
 
-          episodeEl.innerHTML = `${episodeNum}. ${title}${availabilityIcon}`;
+          const watchedBadge = isWatched
+            ? '<span class="episode-watched-badge" title="Watched">✓</span>'
+            : '';
+          const progressBar =
+            !isWatched && watchPercentage > 0
+              ? `<div class="episode-progress"><div class="episode-progress-bar" style="width:${Math.round(watchPercentage)}%"></div></div>`
+              : '';
+
+          episodeEl.innerHTML = `<span class="episode-label">${episodeNum}. ${title}${availabilityIcon}</span>${watchedBadge}${progressBar}`;
 
           if (isAvailable) {
             episodeEl.addEventListener('click', () => {
