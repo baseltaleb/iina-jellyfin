@@ -554,10 +554,6 @@ class JellyfinBrowser {
           title: item.Name || 'Unknown Title',
         });
 
-        // Hide episode selection if showing
-        if (document.getElementById('episodeSection').style.display !== 'none') {
-          this.hideEpisodeSelection();
-        }
       } else {
         debugLog('iina.postMessage not available, trying global object');
         // Try using global object for communication

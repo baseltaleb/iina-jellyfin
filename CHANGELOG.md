@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extract video title/metadata logic into `src/metadata.js` module
 - Extract autoplay/episode playlist logic into `src/autoplay.js` module
 
+### Fixed
+
+- Keep episode list visible after clicking Play Episode instead of returning to main browse view
+
 ### Added
 
 - Watched indicator in episode list: green ✓ badge for fully watched episodes, progress bar for partially watched
