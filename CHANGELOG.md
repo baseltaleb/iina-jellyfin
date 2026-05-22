@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Hide TV shows with no episodes (empty series folders) from the TV Shows tab
 - Watched indicator in episode list: green ✓ badge for fully watched episodes, progress bar for partially watched
 - Auto-open Jellyfin browser window on startup (configurable via `auto_open_browser` preference)
 - **Movies and TV Shows tabs** in the browser with thumbnail grid layout

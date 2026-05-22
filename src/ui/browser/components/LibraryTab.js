@@ -95,7 +95,7 @@ class LibraryTab {
         this.hasMore = this.startIndex < this.totalCount;
 
         this.grid.setItems(
-          response.data.Items,
+          this.filterEmptyShows(response.data.Items),
           browser.currentServer.url,
           browser.currentServer.accessToken
         );
@@ -149,7 +149,7 @@ class LibraryTab {
         this.hasMore = this.startIndex < this.totalCount;
 
         this.grid.appendItems(
-          response.data.Items,
+          this.filterEmptyShows(response.data.Items),
           browser.currentServer.url,
           browser.currentServer.accessToken
         );
@@ -181,7 +181,7 @@ class LibraryTab {
       includeItemTypes: this.itemType,
       sortBy: 'SortName',
       sortOrder: 'Ascending',
-      fields: 'PrimaryImageAspectRatio,ProductionYear,ImageTags',
+      fields: 'PrimaryImageAspectRatio,ProductionYear,ImageTags,RecursiveItemCount',
       recursive: 'true',
       limit: this.limit.toString(),
       startIndex: startIndex.toString(),
@@ -194,6 +194,22 @@ class LibraryTab {
         'X-Emby-Token': browser.currentServer.accessToken,
       },
     });
+  }
+
+  /**
+   * Hide TV shows that have no episodes (e.g. series folders whose episodes
+   * were deleted on the server but the directory remains). Only applies to
+   * Series — movies pass through unchanged. Fails open: a show is hidden only
+   * when the server explicitly reports zero episodes via RecursiveItemCount,
+   * so older servers that omit the field still display everything.
+   * @param {Array<Object>} items - Raw items from the Jellyfin API
+   * @returns {Array<Object>} Filtered items
+   */
+  filterEmptyShows(items) {
+    if (this.itemType !== 'Series') {
+      return items;
+    }
+    return items.filter((item) => item.RecursiveItemCount !== 0);
   }
 
   /**
