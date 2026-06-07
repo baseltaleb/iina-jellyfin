@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix playback progress not reporting to Jellyfin when playing from browser UI
 - Fix main-thread freeze when playing media in same window by deferring HTTP work 3s and routing API calls through browser WebView proxy
 
 ### Changed

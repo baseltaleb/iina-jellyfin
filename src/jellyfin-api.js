@@ -39,12 +39,15 @@ function parseJellyfinUrl(url) {
     debugLog(`Extracted pathname: ${pathname}`);
     debugLog(`Extracted queryString: ${queryString}`);
 
-    // Extract item ID from path
-    const pathMatch = pathname.match(/\/Items\/([^\/]+)/);
+    // Extract item ID from path (/Items/{id}, /Videos/{id}, /Audio/{id})
+    const pathMatch =
+      pathname.match(/\/Items\/([^\/]+)/) ||
+      pathname.match(/\/Videos\/([^\/]+)/) ||
+      pathname.match(/\/Audio\/([^\/]+)/);
     debugLog(`Path match result: ${pathMatch ? pathMatch[0] : 'no match'}`);
 
     if (!pathMatch) {
-      debugLog(`No /Items/ pattern found in pathname: ${pathname}`);
+      debugLog(`No item ID pattern found in pathname: ${pathname}`);
       return null;
     }
 
