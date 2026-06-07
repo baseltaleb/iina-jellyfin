@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 
 export default [
+  { ignores: ['src/ui/browser/*.min.js'] },
   js.configs.recommended,
   {
     // Main plugin files (CommonJS modules)

@@ -8,7 +8,7 @@ const { debugLog, base64Encode, base64Decode } = require('./utils.js');
 /**
  * Store Jellyfin session data for auto-login
  */
-function storeJellyfinSession(serverBase, apiKey, username = null, password = null) {
+function storeJellyfinSession(serverBase, apiKey, username = null, password = null, userId = null) {
   try {
     if (!preferences.get('auto_login_enabled')) {
       debugLog('Auto-login disabled, not storing session data');
@@ -20,6 +20,7 @@ function storeJellyfinSession(serverBase, apiKey, username = null, password = nu
     // Store session data in preferences
     preferences.set('jellyfin_session_server', serverBase);
     preferences.set('jellyfin_session_token', apiKey);
+    preferences.set('jellyfin_session_userid', userId || '');
     preferences.set('jellyfin_session_timestamp', Date.now());
 
     // Store credentials if provided and persistence is enabled
@@ -67,6 +68,7 @@ function getStoredJellyfinSession() {
 
     const serverUrl = preferences.get('jellyfin_session_server');
     const accessToken = preferences.get('jellyfin_session_token');
+    const userId = preferences.get('jellyfin_session_userid') || '';
     const timestamp = preferences.get('jellyfin_session_timestamp') || 0;
     const username = preferences.get('jellyfin_session_username');
     const encodedPassword = preferences.get('jellyfin_session_password');
@@ -98,6 +100,7 @@ function getStoredJellyfinSession() {
     return {
       serverUrl,
       accessToken,
+      userId,
       timestamp,
       username,
       password,

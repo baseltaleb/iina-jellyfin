@@ -56,7 +56,7 @@ standaloneWindow.onMessage('clear-session', () => {
 
 standaloneWindow.onMessage('store-session', (data) => {
   if (data && data.serverUrl && data.accessToken) {
-    storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password);
+    storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password, data.userId);
   }
 });
 
