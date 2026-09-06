@@ -98,12 +98,12 @@ AFTER (fix):      onFileLoaded → postMessage('proxy-fetch') → browser fetch(
 
 ### HTTP Call Disposition
 
-| File | Call | Action |
-|------|------|--------|
-| `jellyfin-api.js` | `http.get` ×3 | → `proxyGet` |
-| `playback.js` | `http.post` ×4 | → `proxyPost` |
-| `autoplay.js` | `http.get` ×1 | → `proxyGet` |
-| `subtitles.js` | `http.download` ×2 | Keep (deferred 3s) |
+| File              | Call               | Action             |
+| ----------------- | ------------------ | ------------------ |
+| `jellyfin-api.js` | `http.get` ×3      | → `proxyGet`       |
+| `playback.js`     | `http.post` ×4     | → `proxyPost`      |
+| `autoplay.js`     | `http.get` ×1      | → `proxyGet`       |
+| `subtitles.js`    | `http.download` ×2 | Keep (deferred 3s) |
 
 ### Edge Cases
 

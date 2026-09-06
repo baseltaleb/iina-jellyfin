@@ -1,919 +1,1587 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Inafin</title>
-<link rel="stylesheet" href="inafin.css">
-<script src="react.min.js"></script>
-<script src="react-dom.min.js"></script>
-<script src="babel.min.js"></script>
-<script src="lucide.min.js"></script>
-<script src="browser.js"></script>
-<script src="inafin-api.js"></script>
-</head>
-<body>
-<div id="root"></div>
+  <head>
+    <meta charset="utf-8" />
+    <title>Inafin</title>
+    <link rel="stylesheet" href="inafin.css" />
+    <script src="react.min.js"></script>
+    <script src="react-dom.min.js"></script>
+    <script src="babel.min.js"></script>
+    <script src="lucide.min.js"></script>
+    <script src="browser.js"></script>
+    <script src="inafin-api.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
 
-<script type="text/babel">
+    <script type="text/babel">
+      // ─────────────────────────────────────────────────────────────
+      // TWEAKS (settings persistence)
+      // ─────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────
-// TWEAKS (settings persistence)
-// ─────────────────────────────────────────────────────────────
+      function useTweaks(defaults) {
+        const [values, setValues] = React.useState(() => {
+          try {
+            const stored = localStorage.getItem('inafin_tweaks');
+            if (stored) return Object.assign({}, defaults, JSON.parse(stored));
+          } catch (e) {
+            /* ignore */
+          }
+          return defaults;
+        });
 
-function useTweaks(defaults) {
-  const [values, setValues] = React.useState(() => {
-    try {
-      const stored = localStorage.getItem('inafin_tweaks');
-      if (stored) return Object.assign({}, defaults, JSON.parse(stored));
-    } catch (e) { /* ignore */ }
-    return defaults;
-  });
+        const setTweak = React.useCallback((keyOrEdits, val) => {
+          const edits =
+            typeof keyOrEdits === 'object' && keyOrEdits !== null
+              ? keyOrEdits
+              : { [keyOrEdits]: val };
+          setValues((prev) => {
+            const next = { ...prev, ...edits };
+            try {
+              localStorage.setItem('inafin_tweaks', JSON.stringify(next));
+            } catch (e) {
+              /* ignore */
+            }
+            return next;
+          });
+        }, []);
 
-  const setTweak = React.useCallback((keyOrEdits, val) => {
-    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
-      ? keyOrEdits : { [keyOrEdits]: val };
-    setValues((prev) => {
-      const next = { ...prev, ...edits };
-      try { localStorage.setItem('inafin_tweaks', JSON.stringify(next)); } catch (e) { /* ignore */ }
-      return next;
-    });
-  }, []);
-
-  return [values, setTweak];
-}
-
-// ─────────────────────────────────────────────────────────────
-// SHARED COMPONENTS
-// ─────────────────────────────────────────────────────────────
-
-function PosterArt({ title, itemId, session }) {
-  const [imgFailed, setImgFailed] = React.useState(false);
-  const grad = INAFIN.posterGradient(title);
-  const ini = INAFIN.getInitials(title);
-  const imgUrl = (session && itemId && !imgFailed) ? INAFIN.getImageUrl(session, itemId) : null;
-  return (
-    <div className="poster-art-inner" style={{ background: grad }}>
-      {imgUrl
-        ? <img src={imgUrl} alt={title} onError={() => setImgFailed(true)} />
-        : <span className="poster-mono">{ini}</span>
+        return [values, setTweak];
       }
-    </div>
-  );
-}
 
-function PosterCard({ title, year, genres, progress, watched, size = 'md', onClick, showPlay = true, subtitle, itemId, session }) {
-  return (
-    <div className={'poster-card sz-' + size} onClick={onClick}>
-      <div className="poster-art">
-        <PosterArt title={title} itemId={itemId} session={session} />
-        {showPlay && (
-          <div className="poster-play">
-            <div className="poster-play-icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="8,5 19,12 8,19"/></svg></div>
+      // ─────────────────────────────────────────────────────────────
+      // SHARED COMPONENTS
+      // ─────────────────────────────────────────────────────────────
+
+      function PosterArt({ title, itemId, session }) {
+        const [imgFailed, setImgFailed] = React.useState(false);
+        const grad = INAFIN.posterGradient(title);
+        const ini = INAFIN.getInitials(title);
+        const imgUrl = session && itemId && !imgFailed ? INAFIN.getImageUrl(session, itemId) : null;
+        return (
+          <div className="poster-art-inner" style={{ background: grad }}>
+            {imgUrl ? (
+              <img src={imgUrl} alt={title} onError={() => setImgFailed(true)} />
+            ) : (
+              <span className="poster-mono">{ini}</span>
+            )}
           </div>
-        )}
-        <div className="poster-brackets">
-          <span className="b-tl"></span><span className="b-tr"></span>
-          <span className="b-bl"></span><span className="b-br"></span>
-        </div>
-        {typeof progress === 'number' && progress > 0 && progress < 1 && (
-          <div className="poster-progress"><div className="poster-progress-fill" style={{ width: (progress * 100) + '%' }}></div></div>
-        )}
-        {watched === 1 && (
-          <div className="poster-watched"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg></div>
-        )}
-      </div>
-      <div className="poster-info">
-        <div className="poster-title">{title}</div>
-        <div className="poster-meta">{subtitle || [year, genres && genres[0]].filter(Boolean).join(' · ')}</div>
-      </div>
-    </div>
-  );
-}
+        );
+      }
 
-function ContinueCard({ item, size = 'md', onClick, session }) {
-  const displayTitle = item.type === 'movie' ? item.title : item.showTitle;
-  const sub = item.type === 'movie' ? item.year : ('S' + item.season + ' · E' + item.episode);
-  const imgId = item.type === 'movie' ? item.id : (item.episodeId || item.id);
-  return (
-    <div className={'poster-card cw-card sz-' + size} onClick={onClick}>
-      <div className="poster-art">
-        <PosterArt title={displayTitle} itemId={imgId} session={session} />
-        <div className="poster-play">
-          <div className="poster-play-icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="8,5 19,12 8,19"/></svg></div>
-        </div>
-        <div className="poster-brackets">
-          <span className="b-tl"></span><span className="b-tr"></span>
-          <span className="b-bl"></span><span className="b-br"></span>
-        </div>
-        <div className="cw-label">
-          <div className="cw-title">{displayTitle}</div>
-          <div className="cw-sub">{sub}{item.timeLeft ? ' · ' + item.timeLeft : ''}</div>
-        </div>
-        {item.progress > 0 && (
-          <div className="poster-progress"><div className="poster-progress-fill" style={{ width: (item.progress * 100) + '%' }}></div></div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function EpisodeCard({ item, onClick, session }) {
-  const [imgFailed, setImgFailed] = React.useState(false);
-  const grad = INAFIN.posterGradient(item.showTitle);
-  const ini = INAFIN.getInitials(item.showTitle);
-  const imgUrl = (session && item.episodeId && !imgFailed) ? INAFIN.getImageUrl(session, item.episodeId, 400) : null;
-  return (
-    <div className="ep-card" onClick={onClick}>
-      <div className="ep-thumb" style={{ background: grad }}>
-        {imgUrl
-          ? <img src={imgUrl} alt={item.showTitle} onError={() => setImgFailed(true)} />
-          : <span className="poster-mono">{ini}</span>
-        }
-      </div>
-      <div className="ep-info">
-        <div className="ep-show">{item.showTitle}</div>
-        <div className="ep-title">S{item.season}E{item.episode} · {item.epTitle}</div>
-        <div className="ep-meta">{item.runtime}</div>
-      </div>
-    </div>
-  );
-}
-
-function SectionHeader({ label, meta, onSeeAll }) {
-  return (
-    <div className="section-hdr">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="eyebrow">{'◇ ' + label}</span>
-        {meta && <span className="meta">{meta}</span>}
-      </div>
-      {onSeeAll && <button className="see-all" onClick={onSeeAll}>VIEW ALL →</button>}
-    </div>
-  );
-}
-
-function LoadingState() {
-  return <div className="loading-state">LOADING</div>;
-}
-
-function ErrorBanner({ message, onRetry }) {
-  return (
-    <div className="error-banner">
-      <span className="error-icon">✕</span>
-      <span className="error-msg">{message}</span>
-      {onRetry && <button className="retry-btn" onClick={onRetry}>RETRY</button>}
-    </div>
-  );
-}
-
-/* ─── Toast System ─── */
-const ToastContext = React.createContext(null);
-
-function ToastProvider({ children }) {
-  const [toasts, setToasts] = React.useState([]);
-  const idRef = React.useRef(0);
-
-  function addToast(msg) {
-    const id = ++idRef.current;
-    setToasts(t => t.concat({ id, msg }));
-    setTimeout(() => {
-      setToasts(t => t.map(x => x.id === id ? { ...x, leaving: true } : x));
-      setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 200);
-    }, 2500);
-  }
-
-  return (
-    <ToastContext.Provider value={addToast}>
-      {children}
-      <div className="toast-container">
-        {toasts.map(t => (
-          <div key={t.id} className={'toast' + (t.leaving ? ' leaving' : '')}>
-            <span className="toast-dot"></span>{t.msg}
-          </div>
-        ))}
-      </div>
-    </ToastContext.Provider>
-  );
-}
-
-function useToast() { return React.useContext(ToastContext); }
-
-/* ─── Top Bar ─── */
-function InafinTopBar({ page, onNav, onSearch, session, onUserMenu }) {
-  const [showMenu, setShowMenu] = React.useState(false);
-  const menuRef = React.useRef(null);
-
-  React.useEffect(() => {
-    function handleClick(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
-    }
-    if (showMenu) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showMenu]);
-
-  return (
-    <div className="topbar">
-      <div className="topbar-left">
-        <span className="topbar-wordmark">inafin</span>
-        <span className="topbar-tag">MEDIA</span>
-        <span className="topbar-div"></span>
-        <span className="topbar-status"><span className="dot"></span>CONNECTED</span>
-      </div>
-      <div className="topbar-mid">
-        <div className="topbar-nav">
-          {['home','movies','shows','recent'].map(p => {
-            const labels = { home: 'Home', movies: 'Movies', shows: 'Shows', recent: 'Recent' };
-            return <button key={p} className={'topbar-nav-item' + (page === p ? ' on' : '')} onClick={() => onNav(p)}>{labels[p]}</button>;
-          })}
-        </div>
-        <button className="search-trigger" onClick={onSearch}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span>Search library</span>
-          <span className="kbd">⌘K</span>
-        </button>
-      </div>
-      <div className="topbar-right" style={{ position: 'relative' }} ref={menuRef}>
-        <span className="topbar-meta">SERVER <b>{session.server || '—'}</b></span>
-        <div className="topbar-avatar" onClick={() => setShowMenu(!showMenu)}>{session.initials || '?'}</div>
-        {showMenu && (
-          <div className="user-menu">
-            <div style={{ padding: '10px 14px' }}>
-              <div style={{ fontSize: 13, color: 'var(--fg-primary)', fontWeight: 500 }}>{session.user}</div>
-              <div style={{ fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', marginTop: 2 }}>{session.server}</div>
+      function PosterCard({
+        title,
+        year,
+        genres,
+        progress,
+        watched,
+        size = 'md',
+        onClick,
+        showPlay = true,
+        subtitle,
+        itemId,
+        session,
+      }) {
+        return (
+          <div className={'poster-card sz-' + size} onClick={onClick}>
+            <div className="poster-art">
+              <PosterArt title={title} itemId={itemId} session={session} />
+              {showPlay && (
+                <div className="poster-play">
+                  <div className="poster-play-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                      <polygon points="8,5 19,12 8,19" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+              <div className="poster-brackets">
+                <span className="b-tl"></span>
+                <span className="b-tr"></span>
+                <span className="b-bl"></span>
+                <span className="b-br"></span>
+              </div>
+              {typeof progress === 'number' && progress > 0 && progress < 1 && (
+                <div className="poster-progress">
+                  <div
+                    className="poster-progress-fill"
+                    style={{ width: progress * 100 + '%' }}
+                  ></div>
+                </div>
+              )}
+              {watched === 1 && (
+                <div className="poster-watched">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+              )}
             </div>
-            <div className="user-menu-sep"></div>
-            <button className="user-menu-item" onClick={() => { setShowMenu(false); onUserMenu('settings'); }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-              Settings
-            </button>
-            <div className="user-menu-sep"></div>
-            <button className="user-menu-item danger" onClick={() => { setShowMenu(false); onUserMenu('logout'); }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Log out
-            </button>
+            <div className="poster-info">
+              <div className="poster-title">{title}</div>
+              <div className="poster-meta">
+                {subtitle || [year, genres && genres[0]].filter(Boolean).join(' · ')}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Sidebar ─── */
-function InafinSidebar({ page, onNav }) {
-  const items = [
-    { id: 'home',   icon: 'home',  label: 'Home' },
-    { id: 'movies', icon: 'film',  label: 'Movies' },
-    { id: 'shows',  icon: 'tv',    label: 'TV Shows' },
-    { id: 'recent', icon: 'clock', label: 'Recent' },
-  ];
-
-  React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
-
-  return (
-    <aside className="sidebar">
-      <nav>
-        {items.map(it => (
-          <button key={it.id} className={'sidebar-item' + (page === it.id ? ' on' : '')} onClick={() => onNav(it.id)}>
-            <i data-lucide={it.icon}></i>
-            <span className="sidebar-label">{it.label}</span>
-          </button>
-        ))}
-      </nav>
-      <div className="sidebar-foot">
-        <div className="sidebar-count">JELLYFIN</div>
-      </div>
-    </aside>
-  );
-}
-
-/* ─── Search Palette ─── */
-function SearchPalette({ open, onClose, onSelect, session }) {
-  const [query, setQuery] = React.useState('');
-  const [focusIdx, setFocusIdx] = React.useState(0);
-  const [results, setResults] = React.useState({ movies: [], shows: [] });
-  const [searching, setSearching] = React.useState(false);
-  const inputRef = React.useRef(null);
-
-  React.useEffect(() => {
-    if (open && inputRef.current) {
-      inputRef.current.focus();
-      setQuery('');
-      setFocusIdx(0);
-      setResults({ movies: [], shows: [] });
-    }
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!query.trim() || !session) { setResults({ movies: [], shows: [] }); return; }
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      setSearching(true);
-      INAFIN_API.search(session, query)
-        .then(r => { if (!cancelled) { setResults(r); setSearching(false); setFocusIdx(0); } })
-        .catch(() => { if (!cancelled) setSearching(false); });
-    }, 300);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [query]);
-
-  if (!open) return null;
-
-  const allResults = results.movies.map(m => ({ type: 'movie', data: m }))
-    .concat(results.shows.map(s => ({ type: 'show', data: s })));
-
-  function handleKey(e) {
-    if (e.key === 'Escape') { onClose(); return; }
-    if (e.key === 'ArrowDown') { e.preventDefault(); setFocusIdx(i => Math.min(i + 1, allResults.length - 1)); }
-    if (e.key === 'ArrowUp') { e.preventDefault(); setFocusIdx(i => Math.max(i - 1, 0)); }
-    if (e.key === 'Enter' && allResults[focusIdx]) { onSelect(allResults[focusIdx]); onClose(); }
-  }
-
-  return (
-    <div className="search-shroud" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="search-box" onKeyDown={handleKey}>
-        <div className="search-input-row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input ref={inputRef} value={query} onChange={e => { setQuery(e.target.value); setFocusIdx(0); }} placeholder="Search movies and series..." />
-          <button className="search-esc" onClick={onClose}>ESC</button>
-        </div>
-        <div className="search-results">
-          {searching && <div className="search-empty">SEARCHING…</div>}
-          {!searching && !query && <div className="search-empty">Type to search your library</div>}
-          {!searching && query && allResults.length === 0 && <div className="search-empty">No results for "{query}"</div>}
-          {!searching && results.movies.length > 0 && <div className="search-group-label">MOVIES</div>}
-          {!searching && results.movies.map((m, i) => (
-            <button key={m.id} className={'search-item' + (focusIdx === i ? ' on' : '')}
-                    onClick={() => { onSelect({ type: 'movie', data: m }); onClose(); }}
-                    onMouseEnter={() => setFocusIdx(i)}>
-              <div className="search-item-poster" style={{ background: INAFIN.posterGradient(m.title) }}>
-                {session && <img src={INAFIN.getImageUrl(session, m.id, 64)} alt="" onError={e => { e.target.style.display='none'; }} />}
-                <span className="poster-mono">{INAFIN.getInitials(m.title)}</span>
-              </div>
-              <div className="search-item-info">
-                <div className="search-item-title">{m.title}</div>
-                <div className="search-item-meta">{[m.year, m.genres && m.genres[0]].filter(Boolean).join(' · ')}</div>
-              </div>
-            </button>
-          ))}
-          {!searching && results.shows.length > 0 && <div className="search-group-label">SERIES</div>}
-          {!searching && results.shows.map((s, j) => {
-            const idx = results.movies.length + j;
-            return (
-              <button key={s.id} className={'search-item' + (focusIdx === idx ? ' on' : '')}
-                      onClick={() => { onSelect({ type: 'show', data: s }); onClose(); }}
-                      onMouseEnter={() => setFocusIdx(idx)}>
-                <div className="search-item-poster" style={{ background: INAFIN.posterGradient(s.title) }}>
-                  {session && <img src={INAFIN.getImageUrl(session, s.id, 64)} alt="" onError={e => { e.target.style.display='none'; }} />}
-                  <span className="poster-mono">{INAFIN.getInitials(s.title)}</span>
-                </div>
-                <div className="search-item-info">
-                  <div className="search-item-title">{s.title}</div>
-                  <div className="search-item-meta">{[s.year, s.seasonCount > 0 ? s.seasonCount + ' season' + (s.seasonCount > 1 ? 's' : '') : null].filter(Boolean).join(' · ')}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        <div className="search-foot">
-          <span><kbd>↑↓</kbd> Navigate</span>
-          <span><kbd>↵</kbd> Select</span>
-          <span><kbd>esc</kbd> Close</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// SCREENS
-// ─────────────────────────────────────────────────────────────
-
-function LoginScreen({ onLogin }) {
-  const [server, setServer] = React.useState('');
-  const [user, setUser] = React.useState('');
-  const [pass, setPass] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState('');
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (!server || !user || !pass) { setError('All fields are required.'); return; }
-    setLoading(true); setError('');
-    INAFIN_API.login(server, user, pass)
-      .then(s => { setLoading(false); onLogin(s); })
-      .catch(e => { setLoading(false); setError(e.message || 'Authentication failed'); });
-  }
-
-  return (
-    <div className="login-screen">
-      <form className="login-card" onSubmit={handleSubmit}>
-        <span className="login-corner tl"></span><span className="login-corner tr"></span>
-        <span className="login-corner bl"></span><span className="login-corner br"></span>
-        <div className="login-scan"></div>
-        <div className="login-brand">
-          <span className="wordmark">inafin</span>
-          <span className="tag">MEDIA</span>
-        </div>
-        <div className="login-field">
-          <label>SERVER ADDRESS</label>
-          <input type="text" placeholder="jellyfin.example.com" value={server} onChange={e => setServer(e.target.value)} />
-        </div>
-        <div className="login-field">
-          <label>USERNAME</label>
-          <input type="text" placeholder="admin" value={user} onChange={e => setUser(e.target.value)} />
-        </div>
-        <div className="login-field">
-          <label>PASSWORD</label>
-          <input type="password" placeholder="••••••••" value={pass} onChange={e => setPass(e.target.value)} />
-        </div>
-        <button className="login-btn" type="submit" disabled={loading}>{loading ? 'CONNECTING...' : 'CONNECT'}</button>
-        {error && <div className="login-error">{error}</div>}
-      </form>
-    </div>
-  );
-}
-
-function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
-  const [cw, setCw] = React.useState([]);
-  const [nu, setNu] = React.useState([]);
-  const [ra, setRa] = React.useState([]);
-  const [cwLoading, setCwLoading] = React.useState(true);
-  const [cwError, setCwError] = React.useState(null);
-  const [nuLoading, setNuLoading] = React.useState(true);
-  const [raLoading, setRaLoading] = React.useState(true);
-
-  function loadCw() {
-    setCwLoading(true); setCwError(null);
-    INAFIN_API.fetchContinueWatching(session)
-      .then(d => { setCw(d); setCwLoading(false); })
-      .catch(e => { setCwError(e.message || 'Failed to load'); setCwLoading(false); });
-  }
-
-  React.useEffect(() => {
-    loadCw();
-    INAFIN_API.fetchNextUp(session)
-      .then(d => { setNu(d); setNuLoading(false); })
-      .catch(() => setNuLoading(false));
-    INAFIN_API.fetchRecentlyAdded(session)
-      .then(d => { setRa(d); setRaLoading(false); })
-      .catch(() => setRaLoading(false));
-  }, []);
-
-  return (
-    <div className="page-enter">
-      <SectionHeader label="CONTINUE WATCHING" meta={cw.length > 0 ? cw.length + ' ITEMS' : ''} />
-      {cwLoading && <LoadingState />}
-      {cwError && <ErrorBanner message={cwError} onRetry={loadCw} />}
-      {!cwLoading && !cwError && cw.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-muted)', letterSpacing: '0.08em', padding: '16px 0' }}>Nothing in progress</div>
-      )}
-      {!cwLoading && !cwError && cw.length > 0 && (
-        <div className="media-row">
-          {cw.map((item, i) => (
-            <ContinueCard key={i} item={item} size="md" session={session} onClick={() => {
-              if (item.type === 'movie') onItemPlay(item.id, item.title);
-              else onShowSelect(item.id);
-            }} />
-          ))}
-        </div>
-      )}
-
-      {(nuLoading || nu.length > 0) && <SectionHeader label="NEXT UP" meta="EPISODES" />}
-      {nuLoading && <LoadingState />}
-      {!nuLoading && nu.length > 0 && (
-        <div className="media-row">
-          {nu.map((item, i) => (
-            <EpisodeCard key={i} item={item} session={session} onClick={() => onShowSelect(item.id)} />
-          ))}
-        </div>
-      )}
-
-      <SectionHeader label="RECENTLY ADDED" onSeeAll={() => onNav('recent')} />
-      {raLoading && <LoadingState />}
-      {!raLoading && ra.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-muted)', letterSpacing: '0.08em', padding: '16px 0' }}>Nothing recently added</div>
-      )}
-      {!raLoading && ra.length > 0 && (
-        <div className="media-row">
-          {ra.map((item, i) => item.type === 'show'
-            ? <PosterCard key={i} title={item.title} year={item.year} size="md" itemId={item.id} session={session} subtitle={item.addedAgo} showPlay={false} onClick={() => onShowSelect(item.id)} />
-            : <PosterCard key={i} title={item.title} year={item.year} size="md" itemId={item.id} session={session} subtitle={item.addedAgo} onClick={() => onItemPlay(item.id, item.title)} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MoviesScreen({ session, onItemPlay }) {
-  const [items, setItems] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [sort, setSort] = React.useState('title');
-
-  function load() {
-    setLoading(true); setError(null);
-    INAFIN_API.fetchMovies(session, sort)
-      .then(d => { setItems(d); setLoading(false); })
-      .catch(e => { setError(e.message || 'Failed to load'); setLoading(false); });
-  }
-
-  React.useEffect(() => { load(); }, [sort]);
-
-  return (
-    <div className="page-enter">
-      <div className="page-head">
-        <div><span className="eyebrow-top">LIBRARY · FILMS</span><h2>Movies</h2></div>
-        <div className="sort-controls">
-          <button className={'sort-btn' + (sort === 'title' ? ' on' : '')} onClick={() => setSort('title')}>A→Z</button>
-          <button className={'sort-btn' + (sort === 'year' ? ' on' : '')} onClick={() => setSort('year')}>YEAR</button>
-          <button className={'sort-btn' + (sort === 'recent' ? ' on' : '')} onClick={() => setSort('recent')}>ADDED</button>
-        </div>
-      </div>
-      {loading && <LoadingState />}
-      {error && <ErrorBanner message={error} onRetry={load} />}
-      {!loading && !error && items.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-muted)', letterSpacing: '0.08em', textAlign: 'center', padding: '60px 0' }}>NO MOVIES FOUND</div>
-      )}
-      {!loading && !error && items.length > 0 && (
-        <div className="media-grid">
-          {items.map(m => (
-            <PosterCard key={m.id} title={m.title} year={m.year} genres={m.genres} itemId={m.id} session={session} watched={m.watched} onClick={() => onItemPlay(m.id, m.title)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ShowsScreen({ session, onShowSelect }) {
-  const [items, setItems] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [sort, setSort] = React.useState('title');
-
-  function load() {
-    setLoading(true); setError(null);
-    INAFIN_API.fetchShows(session, sort)
-      .then(d => { setItems(d); setLoading(false); })
-      .catch(e => { setError(e.message || 'Failed to load'); setLoading(false); });
-  }
-
-  React.useEffect(() => { load(); }, [sort]);
-
-  return (
-    <div className="page-enter">
-      <div className="page-head">
-        <div><span className="eyebrow-top">LIBRARY · SERIES</span><h2>TV Shows</h2></div>
-        <div className="sort-controls">
-          <button className={'sort-btn' + (sort === 'title' ? ' on' : '')} onClick={() => setSort('title')}>A→Z</button>
-          <button className={'sort-btn' + (sort === 'year' ? ' on' : '')} onClick={() => setSort('year')}>YEAR</button>
-        </div>
-      </div>
-      {loading && <LoadingState />}
-      {error && <ErrorBanner message={error} onRetry={load} />}
-      {!loading && !error && items.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-muted)', letterSpacing: '0.08em', textAlign: 'center', padding: '60px 0' }}>NO SHOWS FOUND</div>
-      )}
-      {!loading && !error && items.length > 0 && (
-        <div className="media-grid">
-          {items.map(s => (
-            <PosterCard key={s.id} title={s.title} year={s.year} genres={s.genres} itemId={s.id} session={session}
-              subtitle={s.seasonCount > 0 ? s.seasonCount + ' season' + (s.seasonCount > 1 ? 's' : '') : ''}
-              showPlay={false} onClick={() => onShowSelect(s.id)} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RecentScreen({ session, onItemPlay, onShowSelect }) {
-  const [items, setItems] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-
-  function load() {
-    setLoading(true); setError(null);
-    INAFIN_API.fetchRecentlyAdded(session)
-      .then(d => { setItems(d); setLoading(false); })
-      .catch(e => { setError(e.message || 'Failed to load'); setLoading(false); });
-  }
-
-  React.useEffect(() => { load(); }, []);
-
-  return (
-    <div className="page-enter">
-      <div className="page-head"><div><span className="eyebrow-top">LIBRARY · RECENT</span><h2>Recently added</h2></div></div>
-      {loading && <LoadingState />}
-      {error && <ErrorBanner message={error} onRetry={load} />}
-      {!loading && !error && (
-        <div className="media-grid">
-          {items.map((item, i) => item.type === 'show'
-            ? <PosterCard key={i} title={item.title} year={item.year} itemId={item.id} session={session} subtitle={item.addedAgo} showPlay={false} onClick={() => onShowSelect(item.id)} />
-            : <PosterCard key={i} title={item.title} year={item.year} itemId={item.id} session={session} subtitle={item.addedAgo} onClick={() => onItemPlay(item.id, item.title)} />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SeriesDetail({ session, showId, onBack, onItemPlay }) {
-  const [show, setShow] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  const [activeSeason, setActiveSeason] = React.useState(0);
-
-  function load() {
-    setLoading(true); setError(null);
-    INAFIN_API.fetchSeriesDetail(session, showId)
-      .then(d => { setShow(d); setLoading(false); setActiveSeason(0); })
-      .catch(e => { setError(e.message || 'Failed to load'); setLoading(false); });
-  }
-
-  React.useEffect(() => { load(); }, [showId]);
-
-  if (loading) return (
-    <div className="page-enter">
-      <button className="series-back" onClick={onBack}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
-      <LoadingState />
-    </div>
-  );
-  if (error) return (
-    <div className="page-enter">
-      <button className="series-back" onClick={onBack}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
-      <ErrorBanner message={error} onRetry={load} />
-    </div>
-  );
-  if (!show) return null;
-
-  const season = show.seasons[activeSeason] || { episodes: [] };
-
-  let nextEp = null;
-  outer: for (let si = 0; si < show.seasons.length; si++) {
-    for (let ei = 0; ei < show.seasons[si].episodes.length; ei++) {
-      if (show.seasons[si].episodes[ei].watched < 1) {
-        nextEp = { season: show.seasons[si].num, episode: show.seasons[si].episodes[ei].num, id: show.seasons[si].episodes[ei].id, title: show.seasons[si].episodes[ei].title };
-        break outer;
+        );
       }
-    }
-  }
 
-  return (
-    <div className="page-enter">
-      <button className="series-back" onClick={onBack}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6"/></svg>Back</button>
-
-      <div className="series-hero" style={{ background: INAFIN.posterGradient(show.title) }}>
-        <h2 className="series-title">{show.title}</h2>
-        <div className="series-meta-row">
-          <span className="series-meta-item">{show.year}</span>
-          <span className="series-meta-item">{show.seasons.length} SEASON{show.seasons.length > 1 ? 'S' : ''}</span>
-          {show.genres.map(g => <span key={g} className="series-genre">{g}</span>)}
-        </div>
-        {show.overview && <p className="series-overview">{show.overview}</p>}
-        {nextEp && (
-          <button className="series-play-btn" onClick={() => onItemPlay(nextEp.id, show.title + ' S' + nextEp.season + 'E' + nextEp.episode)}>
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="8,5 19,12 8,19"/></svg>
-            PLAY S{nextEp.season}E{nextEp.episode}
-          </button>
-        )}
-      </div>
-
-      <div className="season-tabs">
-        {show.seasons.map((s, idx) => (
-          <button key={s.num} className={'season-tab' + (activeSeason === idx ? ' on' : '')} onClick={() => setActiveSeason(idx)}>Season {s.num}</button>
-        ))}
-      </div>
-
-      <div className="episode-list">
-        {season.episodes.map(ep => (
-          <div key={ep.num} className="episode-row" onClick={() => onItemPlay(ep.id, show.title + ' S' + season.num + 'E' + ep.num)}>
-            <span className="ep-num">{String(ep.num).padStart(2, '0')}</span>
-            <span className="ep-row-title">{ep.title}</span>
-            <span className="ep-row-runtime">{ep.runtime}</span>
-            <span className="ep-row-status">
-              {ep.watched >= 1 ? <span className="ep-watched-dot"></span>
-                : ep.watched > 0 ? <div className="ep-partial-bar"><div className="ep-partial-fill" style={{ width: (ep.watched * 100) + '%' }}></div></div>
-                : <span className="ep-unplayed-dot"></span>}
-            </span>
+      function ContinueCard({ item, size = 'md', onClick, session }) {
+        const displayTitle = item.type === 'movie' ? item.title : item.showTitle;
+        const sub = item.type === 'movie' ? item.year : 'S' + item.season + ' · E' + item.episode;
+        const imgId = item.type === 'movie' ? item.id : item.episodeId || item.id;
+        return (
+          <div className={'poster-card cw-card sz-' + size} onClick={onClick}>
+            <div className="poster-art">
+              <PosterArt title={displayTitle} itemId={imgId} session={session} />
+              <div className="poster-play">
+                <div className="poster-play-icon">
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <polygon points="8,5 19,12 8,19" />
+                  </svg>
+                </div>
+              </div>
+              <div className="poster-brackets">
+                <span className="b-tl"></span>
+                <span className="b-tr"></span>
+                <span className="b-bl"></span>
+                <span className="b-br"></span>
+              </div>
+              <div className="cw-label">
+                <div className="cw-title">{displayTitle}</div>
+                <div className="cw-sub">
+                  {sub}
+                  {item.timeLeft ? ' · ' + item.timeLeft : ''}
+                </div>
+              </div>
+              {item.progress > 0 && (
+                <div className="poster-progress">
+                  <div
+                    className="poster-progress-fill"
+                    style={{ width: item.progress * 100 + '%' }}
+                  ></div>
+                </div>
+              )}
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+        );
+      }
 
-function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
-  const accentOptions = [
-    { id: 'plasma',  label: 'PLASMA',  color: '#14c2ee' },
-    { id: 'ember',   label: 'EMBER',   color: '#ff7a2e' },
-    { id: 'ion',     label: 'ION',     color: '#6f4cf5' },
-    { id: 'verdant', label: 'VERDANT', color: '#16c98a' },
-  ];
+      function EpisodeCard({ item, onClick, session }) {
+        const [imgFailed, setImgFailed] = React.useState(false);
+        const grad = INAFIN.posterGradient(item.showTitle);
+        const ini = INAFIN.getInitials(item.showTitle);
+        const imgUrl =
+          session && item.episodeId && !imgFailed
+            ? INAFIN.getImageUrl(session, item.episodeId, 400)
+            : null;
+        return (
+          <div className="ep-card" onClick={onClick}>
+            <div className="ep-thumb" style={{ background: grad }}>
+              {imgUrl ? (
+                <img src={imgUrl} alt={item.showTitle} onError={() => setImgFailed(true)} />
+              ) : (
+                <span className="poster-mono">{ini}</span>
+              )}
+            </div>
+            <div className="ep-info">
+              <div className="ep-show">{item.showTitle}</div>
+              <div className="ep-title">
+                S{item.season}E{item.episode} · {item.epTitle}
+              </div>
+              <div className="ep-meta">{item.runtime}</div>
+            </div>
+          </div>
+        );
+      }
 
-  React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+      function SectionHeader({ label, meta, onSeeAll }) {
+        return (
+          <div className="section-hdr">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span className="eyebrow">{'◇ ' + label}</span>
+              {meta && <span className="meta">{meta}</span>}
+            </div>
+            {onSeeAll && (
+              <button className="see-all" onClick={onSeeAll}>
+                VIEW ALL →
+              </button>
+            )}
+          </div>
+        );
+      }
 
-  return (
-    <div className="page-enter">
-      <div className="page-head"><div><span className="eyebrow-top">SYSTEM · PREFERENCES</span><h2>Settings</h2></div></div>
-      <div className="settings-grid">
-        <div className="settings-card">
-          <div className="settings-card-head"><i data-lucide="palette"></i><span>Appearance</span></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Accent color</span><span className="settings-label-desc">Interface highlight color</span></div>
-            <div className="accent-swatches">
-              {accentOptions.map(opt => (
-                <button key={opt.id} className={'accent-swatch' + (tweaks.accentColor === opt.id ? ' on' : '')} onClick={() => setTweak('accentColor', opt.id)} title={opt.label}>
-                  <span className="swatch-fill" style={{ background: opt.color }}></span>
-                  <span className="swatch-label">{opt.label}</span>
+      function LoadingState() {
+        return <div className="loading-state">LOADING</div>;
+      }
+
+      function ErrorBanner({ message, onRetry }) {
+        return (
+          <div className="error-banner">
+            <span className="error-icon">✕</span>
+            <span className="error-msg">{message}</span>
+            {onRetry && (
+              <button className="retry-btn" onClick={onRetry}>
+                RETRY
+              </button>
+            )}
+          </div>
+        );
+      }
+
+      /* ─── Toast System ─── */
+      const ToastContext = React.createContext(null);
+
+      function ToastProvider({ children }) {
+        const [toasts, setToasts] = React.useState([]);
+        const idRef = React.useRef(0);
+
+        function addToast(msg) {
+          const id = ++idRef.current;
+          setToasts((t) => t.concat({ id, msg }));
+          setTimeout(() => {
+            setToasts((t) => t.map((x) => (x.id === id ? { ...x, leaving: true } : x)));
+            setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 200);
+          }, 2500);
+        }
+
+        return (
+          <ToastContext.Provider value={addToast}>
+            {children}
+            <div className="toast-container">
+              {toasts.map((t) => (
+                <div key={t.id} className={'toast' + (t.leaving ? ' leaving' : '')}>
+                  <span className="toast-dot"></span>
+                  {t.msg}
+                </div>
+              ))}
+            </div>
+          </ToastContext.Provider>
+        );
+      }
+
+      function useToast() {
+        return React.useContext(ToastContext);
+      }
+
+      /* ─── Top Bar ─── */
+      function InafinTopBar({ page, onNav, onSearch, session, onUserMenu }) {
+        const [showMenu, setShowMenu] = React.useState(false);
+        const menuRef = React.useRef(null);
+
+        React.useEffect(() => {
+          function handleClick(e) {
+            if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+          }
+          if (showMenu) document.addEventListener('mousedown', handleClick);
+          return () => document.removeEventListener('mousedown', handleClick);
+        }, [showMenu]);
+
+        return (
+          <div className="topbar">
+            <div className="topbar-left">
+              <span className="topbar-wordmark">inafin</span>
+              <span className="topbar-tag">MEDIA</span>
+              <span className="topbar-div"></span>
+              <span className="topbar-status">
+                <span className="dot"></span>CONNECTED
+              </span>
+            </div>
+            <div className="topbar-mid">
+              <div className="topbar-nav">
+                {['home', 'movies', 'shows', 'recent'].map((p) => {
+                  const labels = {
+                    home: 'Home',
+                    movies: 'Movies',
+                    shows: 'Shows',
+                    recent: 'Recent',
+                  };
+                  return (
+                    <button
+                      key={p}
+                      className={'topbar-nav-item' + (page === p ? ' on' : '')}
+                      onClick={() => onNav(p)}
+                    >
+                      {labels[p]}
+                    </button>
+                  );
+                })}
+              </div>
+              <button className="search-trigger" onClick={onSearch}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <span>Search library</span>
+                <span className="kbd">⌘K</span>
+              </button>
+            </div>
+            <div className="topbar-right" style={{ position: 'relative' }} ref={menuRef}>
+              <span className="topbar-meta">
+                SERVER <b>{session.server || '—'}</b>
+              </span>
+              <div className="topbar-avatar" onClick={() => setShowMenu(!showMenu)}>
+                {session.initials || '?'}
+              </div>
+              {showMenu && (
+                <div className="user-menu">
+                  <div style={{ padding: '10px 14px' }}>
+                    <div style={{ fontSize: 13, color: 'var(--fg-primary)', fontWeight: 500 }}>
+                      {session.user}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: 'var(--fg-muted)',
+                        fontFamily: 'var(--font-mono)',
+                        letterSpacing: '0.08em',
+                        marginTop: 2,
+                      }}
+                    >
+                      {session.server}
+                    </div>
+                  </div>
+                  <div className="user-menu-sep"></div>
+                  <button
+                    className="user-menu-item"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onUserMenu('settings');
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    Settings
+                  </button>
+                  <div className="user-menu-sep"></div>
+                  <button
+                    className="user-menu-item danger"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onUserMenu('logout');
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      /* ─── Sidebar ─── */
+      function InafinSidebar({ page, onNav }) {
+        const items = [
+          { id: 'home', icon: 'home', label: 'Home' },
+          { id: 'movies', icon: 'film', label: 'Movies' },
+          { id: 'shows', icon: 'tv', label: 'TV Shows' },
+          { id: 'recent', icon: 'clock', label: 'Recent' },
+        ];
+
+        React.useEffect(() => {
+          if (window.lucide) window.lucide.createIcons();
+        });
+
+        return (
+          <aside className="sidebar">
+            <nav>
+              {items.map((it) => (
+                <button
+                  key={it.id}
+                  className={'sidebar-item' + (page === it.id ? ' on' : '')}
+                  onClick={() => onNav(it.id)}
+                >
+                  <i data-lucide={it.icon}></i>
+                  <span className="sidebar-label">{it.label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="sidebar-foot">
+              <div className="sidebar-count">JELLYFIN</div>
+            </div>
+          </aside>
+        );
+      }
+
+      /* ─── Search Palette ─── */
+      function SearchPalette({ open, onClose, onSelect, session }) {
+        const [query, setQuery] = React.useState('');
+        const [focusIdx, setFocusIdx] = React.useState(0);
+        const [results, setResults] = React.useState({ movies: [], shows: [] });
+        const [searching, setSearching] = React.useState(false);
+        const inputRef = React.useRef(null);
+
+        React.useEffect(() => {
+          if (open && inputRef.current) {
+            inputRef.current.focus();
+            setQuery('');
+            setFocusIdx(0);
+            setResults({ movies: [], shows: [] });
+          }
+        }, [open]);
+
+        React.useEffect(() => {
+          if (!query.trim() || !session) {
+            setResults({ movies: [], shows: [] });
+            return;
+          }
+          let cancelled = false;
+          const timer = setTimeout(() => {
+            setSearching(true);
+            INAFIN_API.search(session, query)
+              .then((r) => {
+                if (!cancelled) {
+                  setResults(r);
+                  setSearching(false);
+                  setFocusIdx(0);
+                }
+              })
+              .catch(() => {
+                if (!cancelled) setSearching(false);
+              });
+          }, 300);
+          return () => {
+            cancelled = true;
+            clearTimeout(timer);
+          };
+        }, [query]);
+
+        if (!open) return null;
+
+        const allResults = results.movies
+          .map((m) => ({ type: 'movie', data: m }))
+          .concat(results.shows.map((s) => ({ type: 'show', data: s })));
+
+        function handleKey(e) {
+          if (e.key === 'Escape') {
+            onClose();
+            return;
+          }
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setFocusIdx((i) => Math.min(i + 1, allResults.length - 1));
+          }
+          if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setFocusIdx((i) => Math.max(i - 1, 0));
+          }
+          if (e.key === 'Enter' && allResults[focusIdx]) {
+            onSelect(allResults[focusIdx]);
+            onClose();
+          }
+        }
+
+        return (
+          <div
+            className="search-shroud"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) onClose();
+            }}
+          >
+            <div className="search-box" onKeyDown={handleKey}>
+              <div className="search-input-row">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setFocusIdx(0);
+                  }}
+                  placeholder="Search movies and series..."
+                />
+                <button className="search-esc" onClick={onClose}>
+                  ESC
+                </button>
+              </div>
+              <div className="search-results">
+                {searching && <div className="search-empty">SEARCHING…</div>}
+                {!searching && !query && (
+                  <div className="search-empty">Type to search your library</div>
+                )}
+                {!searching && query && allResults.length === 0 && (
+                  <div className="search-empty">No results for "{query}"</div>
+                )}
+                {!searching && results.movies.length > 0 && (
+                  <div className="search-group-label">MOVIES</div>
+                )}
+                {!searching &&
+                  results.movies.map((m, i) => (
+                    <button
+                      key={m.id}
+                      className={'search-item' + (focusIdx === i ? ' on' : '')}
+                      onClick={() => {
+                        onSelect({ type: 'movie', data: m });
+                        onClose();
+                      }}
+                      onMouseEnter={() => setFocusIdx(i)}
+                    >
+                      <div
+                        className="search-item-poster"
+                        style={{ background: INAFIN.posterGradient(m.title) }}
+                      >
+                        {session && (
+                          <img
+                            src={INAFIN.getImageUrl(session, m.id, 64)}
+                            alt=""
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <span className="poster-mono">{INAFIN.getInitials(m.title)}</span>
+                      </div>
+                      <div className="search-item-info">
+                        <div className="search-item-title">{m.title}</div>
+                        <div className="search-item-meta">
+                          {[m.year, m.genres && m.genres[0]].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                {!searching && results.shows.length > 0 && (
+                  <div className="search-group-label">SERIES</div>
+                )}
+                {!searching &&
+                  results.shows.map((s, j) => {
+                    const idx = results.movies.length + j;
+                    return (
+                      <button
+                        key={s.id}
+                        className={'search-item' + (focusIdx === idx ? ' on' : '')}
+                        onClick={() => {
+                          onSelect({ type: 'show', data: s });
+                          onClose();
+                        }}
+                        onMouseEnter={() => setFocusIdx(idx)}
+                      >
+                        <div
+                          className="search-item-poster"
+                          style={{ background: INAFIN.posterGradient(s.title) }}
+                        >
+                          {session && (
+                            <img
+                              src={INAFIN.getImageUrl(session, s.id, 64)}
+                              alt=""
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <span className="poster-mono">{INAFIN.getInitials(s.title)}</span>
+                        </div>
+                        <div className="search-item-info">
+                          <div className="search-item-title">{s.title}</div>
+                          <div className="search-item-meta">
+                            {[
+                              s.year,
+                              s.seasonCount > 0
+                                ? s.seasonCount + ' season' + (s.seasonCount > 1 ? 's' : '')
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+              <div className="search-foot">
+                <span>
+                  <kbd>↑↓</kbd> Navigate
+                </span>
+                <span>
+                  <kbd>↵</kbd> Select
+                </span>
+                <span>
+                  <kbd>esc</kbd> Close
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // SCREENS
+      // ─────────────────────────────────────────────────────────────
+
+      function LoginScreen({ onLogin }) {
+        const [server, setServer] = React.useState('');
+        const [user, setUser] = React.useState('');
+        const [pass, setPass] = React.useState('');
+        const [loading, setLoading] = React.useState(false);
+        const [error, setError] = React.useState('');
+
+        function handleSubmit(e) {
+          e.preventDefault();
+          if (!server || !user || !pass) {
+            setError('All fields are required.');
+            return;
+          }
+          setLoading(true);
+          setError('');
+          INAFIN_API.login(server, user, pass)
+            .then((s) => {
+              setLoading(false);
+              onLogin(s);
+            })
+            .catch((e) => {
+              setLoading(false);
+              setError(e.message || 'Authentication failed');
+            });
+        }
+
+        return (
+          <div className="login-screen">
+            <form className="login-card" onSubmit={handleSubmit}>
+              <span className="login-corner tl"></span>
+              <span className="login-corner tr"></span>
+              <span className="login-corner bl"></span>
+              <span className="login-corner br"></span>
+              <div className="login-scan"></div>
+              <div className="login-brand">
+                <span className="wordmark">inafin</span>
+                <span className="tag">MEDIA</span>
+              </div>
+              <div className="login-field">
+                <label>SERVER ADDRESS</label>
+                <input
+                  type="text"
+                  placeholder="jellyfin.example.com"
+                  value={server}
+                  onChange={(e) => setServer(e.target.value)}
+                />
+              </div>
+              <div className="login-field">
+                <label>USERNAME</label>
+                <input
+                  type="text"
+                  placeholder="admin"
+                  value={user}
+                  onChange={(e) => setUser(e.target.value)}
+                />
+              </div>
+              <div className="login-field">
+                <label>PASSWORD</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={pass}
+                  onChange={(e) => setPass(e.target.value)}
+                />
+              </div>
+              <button className="login-btn" type="submit" disabled={loading}>
+                {loading ? 'CONNECTING...' : 'CONNECT'}
+              </button>
+              {error && <div className="login-error">{error}</div>}
+            </form>
+          </div>
+        );
+      }
+
+      function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
+        const [cw, setCw] = React.useState([]);
+        const [nu, setNu] = React.useState([]);
+        const [ra, setRa] = React.useState([]);
+        const [cwLoading, setCwLoading] = React.useState(true);
+        const [cwError, setCwError] = React.useState(null);
+        const [nuLoading, setNuLoading] = React.useState(true);
+        const [raLoading, setRaLoading] = React.useState(true);
+
+        function loadCw() {
+          setCwLoading(true);
+          setCwError(null);
+          INAFIN_API.fetchContinueWatching(session)
+            .then((d) => {
+              setCw(d);
+              setCwLoading(false);
+            })
+            .catch((e) => {
+              setCwError(e.message || 'Failed to load');
+              setCwLoading(false);
+            });
+        }
+
+        React.useEffect(() => {
+          loadCw();
+          INAFIN_API.fetchNextUp(session)
+            .then((d) => {
+              setNu(d);
+              setNuLoading(false);
+            })
+            .catch(() => setNuLoading(false));
+          INAFIN_API.fetchRecentlyAdded(session)
+            .then((d) => {
+              setRa(d);
+              setRaLoading(false);
+            })
+            .catch(() => setRaLoading(false));
+        }, []);
+
+        return (
+          <div className="page-enter">
+            <SectionHeader
+              label="CONTINUE WATCHING"
+              meta={cw.length > 0 ? cw.length + ' ITEMS' : ''}
+            />
+            {cwLoading && <LoadingState />}
+            {cwError && <ErrorBanner message={cwError} onRetry={loadCw} />}
+            {!cwLoading && !cwError && cw.length === 0 && (
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  color: 'var(--fg-muted)',
+                  letterSpacing: '0.08em',
+                  padding: '16px 0',
+                }}
+              >
+                Nothing in progress
+              </div>
+            )}
+            {!cwLoading && !cwError && cw.length > 0 && (
+              <div className="media-row">
+                {cw.map((item, i) => (
+                  <ContinueCard
+                    key={i}
+                    item={item}
+                    size="md"
+                    session={session}
+                    onClick={() => {
+                      if (item.type === 'movie') onItemPlay(item.id, item.title);
+                      else onShowSelect(item.id);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {(nuLoading || nu.length > 0) && <SectionHeader label="NEXT UP" meta="EPISODES" />}
+            {nuLoading && <LoadingState />}
+            {!nuLoading && nu.length > 0 && (
+              <div className="media-row">
+                {nu.map((item, i) => (
+                  <EpisodeCard
+                    key={i}
+                    item={item}
+                    session={session}
+                    onClick={() => onShowSelect(item.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            <SectionHeader label="RECENTLY ADDED" onSeeAll={() => onNav('recent')} />
+            {raLoading && <LoadingState />}
+            {!raLoading && ra.length === 0 && (
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  color: 'var(--fg-muted)',
+                  letterSpacing: '0.08em',
+                  padding: '16px 0',
+                }}
+              >
+                Nothing recently added
+              </div>
+            )}
+            {!raLoading && ra.length > 0 && (
+              <div className="media-row">
+                {ra.map((item, i) =>
+                  item.type === 'show' ? (
+                    <PosterCard
+                      key={i}
+                      title={item.title}
+                      year={item.year}
+                      size="md"
+                      itemId={item.id}
+                      session={session}
+                      subtitle={item.addedAgo}
+                      showPlay={false}
+                      onClick={() => onShowSelect(item.id)}
+                    />
+                  ) : (
+                    <PosterCard
+                      key={i}
+                      title={item.title}
+                      year={item.year}
+                      size="md"
+                      itemId={item.id}
+                      session={session}
+                      subtitle={item.addedAgo}
+                      onClick={() => onItemPlay(item.id, item.title)}
+                    />
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function MoviesScreen({ session, onItemPlay }) {
+        const [items, setItems] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState(null);
+        const [sort, setSort] = React.useState('title');
+
+        function load() {
+          setLoading(true);
+          setError(null);
+          INAFIN_API.fetchMovies(session, sort)
+            .then((d) => {
+              setItems(d);
+              setLoading(false);
+            })
+            .catch((e) => {
+              setError(e.message || 'Failed to load');
+              setLoading(false);
+            });
+        }
+
+        React.useEffect(() => {
+          load();
+        }, [sort]);
+
+        return (
+          <div className="page-enter">
+            <div className="page-head">
+              <div>
+                <span className="eyebrow-top">LIBRARY · FILMS</span>
+                <h2>Movies</h2>
+              </div>
+              <div className="sort-controls">
+                <button
+                  className={'sort-btn' + (sort === 'title' ? ' on' : '')}
+                  onClick={() => setSort('title')}
+                >
+                  A→Z
+                </button>
+                <button
+                  className={'sort-btn' + (sort === 'year' ? ' on' : '')}
+                  onClick={() => setSort('year')}
+                >
+                  YEAR
+                </button>
+                <button
+                  className={'sort-btn' + (sort === 'recent' ? ' on' : '')}
+                  onClick={() => setSort('recent')}
+                >
+                  ADDED
+                </button>
+              </div>
+            </div>
+            {loading && <LoadingState />}
+            {error && <ErrorBanner message={error} onRetry={load} />}
+            {!loading && !error && items.length === 0 && (
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  color: 'var(--fg-muted)',
+                  letterSpacing: '0.08em',
+                  textAlign: 'center',
+                  padding: '60px 0',
+                }}
+              >
+                NO MOVIES FOUND
+              </div>
+            )}
+            {!loading && !error && items.length > 0 && (
+              <div className="media-grid">
+                {items.map((m) => (
+                  <PosterCard
+                    key={m.id}
+                    title={m.title}
+                    year={m.year}
+                    genres={m.genres}
+                    itemId={m.id}
+                    session={session}
+                    watched={m.watched}
+                    onClick={() => onItemPlay(m.id, m.title)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function ShowsScreen({ session, onShowSelect }) {
+        const [items, setItems] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState(null);
+        const [sort, setSort] = React.useState('title');
+
+        function load() {
+          setLoading(true);
+          setError(null);
+          INAFIN_API.fetchShows(session, sort)
+            .then((d) => {
+              setItems(d);
+              setLoading(false);
+            })
+            .catch((e) => {
+              setError(e.message || 'Failed to load');
+              setLoading(false);
+            });
+        }
+
+        React.useEffect(() => {
+          load();
+        }, [sort]);
+
+        return (
+          <div className="page-enter">
+            <div className="page-head">
+              <div>
+                <span className="eyebrow-top">LIBRARY · SERIES</span>
+                <h2>TV Shows</h2>
+              </div>
+              <div className="sort-controls">
+                <button
+                  className={'sort-btn' + (sort === 'title' ? ' on' : '')}
+                  onClick={() => setSort('title')}
+                >
+                  A→Z
+                </button>
+                <button
+                  className={'sort-btn' + (sort === 'year' ? ' on' : '')}
+                  onClick={() => setSort('year')}
+                >
+                  YEAR
+                </button>
+              </div>
+            </div>
+            {loading && <LoadingState />}
+            {error && <ErrorBanner message={error} onRetry={load} />}
+            {!loading && !error && items.length === 0 && (
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  color: 'var(--fg-muted)',
+                  letterSpacing: '0.08em',
+                  textAlign: 'center',
+                  padding: '60px 0',
+                }}
+              >
+                NO SHOWS FOUND
+              </div>
+            )}
+            {!loading && !error && items.length > 0 && (
+              <div className="media-grid">
+                {items.map((s) => (
+                  <PosterCard
+                    key={s.id}
+                    title={s.title}
+                    year={s.year}
+                    genres={s.genres}
+                    itemId={s.id}
+                    session={session}
+                    subtitle={
+                      s.seasonCount > 0
+                        ? s.seasonCount + ' season' + (s.seasonCount > 1 ? 's' : '')
+                        : ''
+                    }
+                    showPlay={false}
+                    onClick={() => onShowSelect(s.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function RecentScreen({ session, onItemPlay, onShowSelect }) {
+        const [items, setItems] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState(null);
+
+        function load() {
+          setLoading(true);
+          setError(null);
+          INAFIN_API.fetchRecentlyAdded(session)
+            .then((d) => {
+              setItems(d);
+              setLoading(false);
+            })
+            .catch((e) => {
+              setError(e.message || 'Failed to load');
+              setLoading(false);
+            });
+        }
+
+        React.useEffect(() => {
+          load();
+        }, []);
+
+        return (
+          <div className="page-enter">
+            <div className="page-head">
+              <div>
+                <span className="eyebrow-top">LIBRARY · RECENT</span>
+                <h2>Recently added</h2>
+              </div>
+            </div>
+            {loading && <LoadingState />}
+            {error && <ErrorBanner message={error} onRetry={load} />}
+            {!loading && !error && (
+              <div className="media-grid">
+                {items.map((item, i) =>
+                  item.type === 'show' ? (
+                    <PosterCard
+                      key={i}
+                      title={item.title}
+                      year={item.year}
+                      itemId={item.id}
+                      session={session}
+                      subtitle={item.addedAgo}
+                      showPlay={false}
+                      onClick={() => onShowSelect(item.id)}
+                    />
+                  ) : (
+                    <PosterCard
+                      key={i}
+                      title={item.title}
+                      year={item.year}
+                      itemId={item.id}
+                      session={session}
+                      subtitle={item.addedAgo}
+                      onClick={() => onItemPlay(item.id, item.title)}
+                    />
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function SeriesDetail({ session, showId, onBack, onItemPlay }) {
+        const [show, setShow] = React.useState(null);
+        const [loading, setLoading] = React.useState(true);
+        const [error, setError] = React.useState(null);
+        const [activeSeason, setActiveSeason] = React.useState(0);
+
+        function load() {
+          setLoading(true);
+          setError(null);
+          INAFIN_API.fetchSeriesDetail(session, showId)
+            .then((d) => {
+              setShow(d);
+              setLoading(false);
+              setActiveSeason(0);
+            })
+            .catch((e) => {
+              setError(e.message || 'Failed to load');
+              setLoading(false);
+            });
+        }
+
+        React.useEffect(() => {
+          load();
+        }, [showId]);
+
+        if (loading)
+          return (
+            <div className="page-enter">
+              <button className="series-back" onClick={onBack}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Back
+              </button>
+              <LoadingState />
+            </div>
+          );
+        if (error)
+          return (
+            <div className="page-enter">
+              <button className="series-back" onClick={onBack}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Back
+              </button>
+              <ErrorBanner message={error} onRetry={load} />
+            </div>
+          );
+        if (!show) return null;
+
+        const season = show.seasons[activeSeason] || { episodes: [] };
+
+        let nextEp = null;
+        outer: for (let si = 0; si < show.seasons.length; si++) {
+          for (let ei = 0; ei < show.seasons[si].episodes.length; ei++) {
+            if (show.seasons[si].episodes[ei].watched < 1) {
+              nextEp = {
+                season: show.seasons[si].num,
+                episode: show.seasons[si].episodes[ei].num,
+                id: show.seasons[si].episodes[ei].id,
+                title: show.seasons[si].episodes[ei].title,
+              };
+              break outer;
+            }
+          }
+        }
+
+        return (
+          <div className="page-enter">
+            <button className="series-back" onClick={onBack}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Back
+            </button>
+
+            <div className="series-hero" style={{ background: INAFIN.posterGradient(show.title) }}>
+              <h2 className="series-title">{show.title}</h2>
+              <div className="series-meta-row">
+                <span className="series-meta-item">{show.year}</span>
+                <span className="series-meta-item">
+                  {show.seasons.length} SEASON{show.seasons.length > 1 ? 'S' : ''}
+                </span>
+                {show.genres.map((g) => (
+                  <span key={g} className="series-genre">
+                    {g}
+                  </span>
+                ))}
+              </div>
+              {show.overview && <p className="series-overview">{show.overview}</p>}
+              {nextEp && (
+                <button
+                  className="series-play-btn"
+                  onClick={() =>
+                    onItemPlay(nextEp.id, show.title + ' S' + nextEp.season + 'E' + nextEp.episode)
+                  }
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                    <polygon points="8,5 19,12 8,19" />
+                  </svg>
+                  PLAY S{nextEp.season}E{nextEp.episode}
+                </button>
+              )}
+            </div>
+
+            <div className="season-tabs">
+              {show.seasons.map((s, idx) => (
+                <button
+                  key={s.num}
+                  className={'season-tab' + (activeSeason === idx ? ' on' : '')}
+                  onClick={() => setActiveSeason(idx)}
+                >
+                  Season {s.num}
                 </button>
               ))}
             </div>
-          </div>
-          <div className="settings-sep"></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Background pattern</span><span className="settings-label-desc">Dotted grid overlay on surfaces</span></div>
-            <button className={'settings-toggle' + (tweaks.showPattern ? ' on' : '')} onClick={() => setTweak('showPattern', !tweaks.showPattern)}>
-              <span className="settings-toggle-knob"></span>
-            </button>
-          </div>
-        </div>
 
-        <div className="settings-card">
-          <div className="settings-card-head"><i data-lucide="layout-grid"></i><span>Library</span></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Poster style</span><span className="settings-label-desc">Artwork aspect ratio in grids</span></div>
-            <div className="settings-seg">
-              {['portrait', 'landscape'].map(v => (
-                <button key={v} className={'settings-seg-btn' + (tweaks.posterAspect === v ? ' on' : '')} onClick={() => setTweak('posterAspect', v)}>{v === 'portrait' ? '2:3' : '16:9'}</button>
+            <div className="episode-list">
+              {season.episodes.map((ep) => (
+                <div
+                  key={ep.num}
+                  className="episode-row"
+                  onClick={() => onItemPlay(ep.id, show.title + ' S' + season.num + 'E' + ep.num)}
+                >
+                  <span className="ep-num">{String(ep.num).padStart(2, '0')}</span>
+                  <span className="ep-row-title">{ep.title}</span>
+                  <span className="ep-row-runtime">{ep.runtime}</span>
+                  <span className="ep-row-status">
+                    {ep.watched >= 1 ? (
+                      <span className="ep-watched-dot"></span>
+                    ) : ep.watched > 0 ? (
+                      <div className="ep-partial-bar">
+                        <div
+                          className="ep-partial-fill"
+                          style={{ width: ep.watched * 100 + '%' }}
+                        ></div>
+                      </div>
+                    ) : (
+                      <span className="ep-unplayed-dot"></span>
+                    )}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
-          <div className="settings-sep"></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Grid density</span><span className="settings-label-desc">Content spacing in catalogue views</span></div>
-            <div className="settings-seg">
-              {['compact', 'balanced', 'spacious'].map(v => (
-                <button key={v} className={'settings-seg-btn' + (tweaks.gridDensity === v ? ' on' : '')} onClick={() => setTweak('gridDensity', v)}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-card">
-          <div className="settings-card-head"><i data-lucide="panel-left"></i><span>Navigation</span></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Nav layout</span><span className="settings-label-desc">Position and style of the navigation bar</span></div>
-            <div className="settings-seg">
-              {[{v:'sidebar',l:'Sidebar'},{v:'compact',l:'Compact'},{v:'topnav',l:'Top'}].map(opt => (
-                <button key={opt.v} className={'settings-seg-btn' + (tweaks.navStyle === opt.v ? ' on' : '')} onClick={() => setTweak('navStyle', opt.v)}>{opt.l}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="settings-card">
-          <div className="settings-card-head"><i data-lucide="server"></i><span>Connection</span></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Server</span><span className="settings-label-desc">{session.server}</span></div>
-            <span className="settings-status-badge"><span className="dot"></span>CONNECTED</span>
-          </div>
-          <div className="settings-sep"></div>
-          <div className="settings-row">
-            <div className="settings-label"><span className="settings-label-title">Account</span><span className="settings-label-desc">{session.user}</span></div>
-            <button className="settings-logout-btn" onClick={onLogout}><i data-lucide="log-out"></i>LOG OUT</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
-// APP
-// ─────────────────────────────────────────────────────────────
-
-const TWEAK_DEFAULTS = {
-  accentColor: 'plasma',
-  posterAspect: 'portrait',
-  gridDensity: 'balanced',
-  navStyle: 'topnav',
-  showPattern: true,
-};
-
-function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-
-  const [session, setSession] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem('inafin_session')) || null; } catch (e) { return null; }
-  });
-
-  const [page, setPage] = React.useState('home');
-  const [seriesId, setSeriesId] = React.useState(null);
-  const [searchOpen, setSearchOpen] = React.useState(false);
-  const toast = useToast();
-
-  React.useEffect(() => {
-    if (session) localStorage.setItem('inafin_session', JSON.stringify(session));
-    else localStorage.removeItem('inafin_session');
-  }, [session]);
-
-  // Sync session with IINA plugin if available
-  React.useEffect(() => {
-    if (typeof iina === 'undefined' || !iina.onMessage) return;
-    iina.onMessage('session-data', data => {
-      if (data && data.serverUrl && data.accessToken && !session) {
-        setSession({
-          url: data.serverUrl,
-          server: data.serverUrl.replace(/^https?:\/\//, ''),
-          user: data.username || 'User',
-          userId: data.userId || '',
-          accessToken: data.accessToken,
-          initials: (data.username || 'U').slice(0, 2).toUpperCase(),
-        });
+        );
       }
-    });
-    iina.postMessage('get-session', {});
-  }, []);
 
-  // ⌘K shortcut
-  React.useEffect(() => {
-    function onKey(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setSearchOpen(o => !o); }
-      if (e.key === 'Escape') setSearchOpen(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+      function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
+        const accentOptions = [
+          { id: 'plasma', label: 'PLASMA', color: '#14c2ee' },
+          { id: 'ember', label: 'EMBER', color: '#ff7a2e' },
+          { id: 'ion', label: 'ION', color: '#6f4cf5' },
+          { id: 'verdant', label: 'VERDANT', color: '#16c98a' },
+        ];
 
-  React.useEffect(() => { if (window.lucide) window.lucide.createIcons(); });
+        React.useEffect(() => {
+          if (window.lucide) window.lucide.createIcons();
+        });
 
-  function handleLogin(s) {
-    setSession(s);
-    setPage('home');
-    if (typeof iina !== 'undefined' && iina.postMessage) {
-      iina.postMessage('store-session', { serverUrl: s.url, username: s.user, userId: s.userId, accessToken: s.accessToken });
-    }
-  }
+        return (
+          <div className="page-enter">
+            <div className="page-head">
+              <div>
+                <span className="eyebrow-top">SYSTEM · PREFERENCES</span>
+                <h2>Settings</h2>
+              </div>
+            </div>
+            <div className="settings-grid">
+              <div className="settings-card">
+                <div className="settings-card-head">
+                  <i data-lucide="palette"></i>
+                  <span>Appearance</span>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Accent color</span>
+                    <span className="settings-label-desc">Interface highlight color</span>
+                  </div>
+                  <div className="accent-swatches">
+                    {accentOptions.map((opt) => (
+                      <button
+                        key={opt.id}
+                        className={'accent-swatch' + (tweaks.accentColor === opt.id ? ' on' : '')}
+                        onClick={() => setTweak('accentColor', opt.id)}
+                        title={opt.label}
+                      >
+                        <span className="swatch-fill" style={{ background: opt.color }}></span>
+                        <span className="swatch-label">{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="settings-sep"></div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Background pattern</span>
+                    <span className="settings-label-desc">Dotted grid overlay on surfaces</span>
+                  </div>
+                  <button
+                    className={'settings-toggle' + (tweaks.showPattern ? ' on' : '')}
+                    onClick={() => setTweak('showPattern', !tweaks.showPattern)}
+                  >
+                    <span className="settings-toggle-knob"></span>
+                  </button>
+                </div>
+              </div>
 
-  function handleLogout() {
-    setSession(null); setPage('home'); setSeriesId(null);
-    if (typeof iina !== 'undefined' && iina.postMessage) iina.postMessage('clear-session', {});
-  }
+              <div className="settings-card">
+                <div className="settings-card-head">
+                  <i data-lucide="layout-grid"></i>
+                  <span>Library</span>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Poster style</span>
+                    <span className="settings-label-desc">Artwork aspect ratio in grids</span>
+                  </div>
+                  <div className="settings-seg">
+                    {['portrait', 'landscape'].map((v) => (
+                      <button
+                        key={v}
+                        className={'settings-seg-btn' + (tweaks.posterAspect === v ? ' on' : '')}
+                        onClick={() => setTweak('posterAspect', v)}
+                      >
+                        {v === 'portrait' ? '2:3' : '16:9'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="settings-sep"></div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Grid density</span>
+                    <span className="settings-label-desc">Content spacing in catalogue views</span>
+                  </div>
+                  <div className="settings-seg">
+                    {['compact', 'balanced', 'spacious'].map((v) => (
+                      <button
+                        key={v}
+                        className={'settings-seg-btn' + (tweaks.gridDensity === v ? ' on' : '')}
+                        onClick={() => setTweak('gridDensity', v)}
+                      >
+                        {v.charAt(0).toUpperCase() + v.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-  function handleNav(p) { setPage(p); setSeriesId(null); }
+              <div className="settings-card">
+                <div className="settings-card-head">
+                  <i data-lucide="panel-left"></i>
+                  <span>Navigation</span>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Nav layout</span>
+                    <span className="settings-label-desc">
+                      Position and style of the navigation bar
+                    </span>
+                  </div>
+                  <div className="settings-seg">
+                    {[
+                      { v: 'sidebar', l: 'Sidebar' },
+                      { v: 'compact', l: 'Compact' },
+                      { v: 'topnav', l: 'Top' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.v}
+                        className={'settings-seg-btn' + (tweaks.navStyle === opt.v ? ' on' : '')}
+                        onClick={() => setTweak('navStyle', opt.v)}
+                      >
+                        {opt.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-  function handleItemPlay(itemId, title) {
-    const url = INAFIN_API.getStreamUrl(session, itemId);
-    if (typeof iina !== 'undefined' && iina.postMessage) iina.postMessage('play-media', { streamUrl: url, title });
-    toast('Playback started — ' + title);
-  }
+              <div className="settings-card">
+                <div className="settings-card-head">
+                  <i data-lucide="server"></i>
+                  <span>Connection</span>
+                </div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Server</span>
+                    <span className="settings-label-desc">{session.server}</span>
+                  </div>
+                  <span className="settings-status-badge">
+                    <span className="dot"></span>CONNECTED
+                  </span>
+                </div>
+                <div className="settings-sep"></div>
+                <div className="settings-row">
+                  <div className="settings-label">
+                    <span className="settings-label-title">Account</span>
+                    <span className="settings-label-desc">{session.user}</span>
+                  </div>
+                  <button className="settings-logout-btn" onClick={onLogout}>
+                    <i data-lucide="log-out"></i>LOG OUT
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
-  function handleShowSelect(id) { setSeriesId(id); setPage('series'); }
+      // ─────────────────────────────────────────────────────────────
+      // APP
+      // ─────────────────────────────────────────────────────────────
 
-  function handleSearchSelect(result) {
-    if (result.type === 'movie') handleItemPlay(result.data.id, result.data.title);
-    else handleShowSelect(result.data.id);
-    setSearchOpen(false);
-  }
+      const TWEAK_DEFAULTS = {
+        accentColor: 'plasma',
+        posterAspect: 'portrait',
+        gridDensity: 'balanced',
+        navStyle: 'topnav',
+        showPattern: true,
+      };
 
-  function handleUserMenu(action) {
-    if (action === 'logout') handleLogout();
-    if (action === 'settings') handleNav('settings');
-  }
+      function App() {
+        const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
-  const accentClass = t.accentColor !== 'plasma' ? 'accent-' + t.accentColor : '';
-  const aspectClass = 'aspect-' + t.posterAspect;
-  const densityClass = 'density-' + t.gridDensity;
-  const navClass = t.navStyle === 'sidebar' ? '' : 'nav-' + t.navStyle;
-  const patternClass = t.showPattern ? '' : 'no-pattern';
+        const [session, setSession] = React.useState(() => {
+          try {
+            return JSON.parse(localStorage.getItem('inafin_session')) || null;
+          } catch (e) {
+            return null;
+          }
+        });
 
-  if (!session) {
-    return <div className={accentClass}><LoginScreen onLogin={handleLogin} /></div>;
-  }
+        const [page, setPage] = React.useState('home');
+        const [seriesId, setSeriesId] = React.useState(null);
+        const [searchOpen, setSearchOpen] = React.useState(false);
+        const toast = useToast();
 
-  return (
-    <div className={[accentClass, aspectClass, densityClass].filter(Boolean).join(' ')}>
-      <div className={'app-shell ' + [navClass, patternClass].filter(Boolean).join(' ')}>
-        <InafinTopBar page={page} onNav={handleNav} onSearch={() => setSearchOpen(true)} session={session} onUserMenu={handleUserMenu} />
-        <InafinSidebar page={page} onNav={handleNav} />
-        <main className="main-content">
-          {page === 'home'     && <HomeScreen     session={session} onItemPlay={handleItemPlay} onShowSelect={handleShowSelect} onNav={handleNav} />}
-          {page === 'movies'   && <MoviesScreen   session={session} onItemPlay={handleItemPlay} />}
-          {page === 'shows'    && <ShowsScreen    session={session} onShowSelect={handleShowSelect} />}
-          {page === 'recent'   && <RecentScreen   session={session} onItemPlay={handleItemPlay} onShowSelect={handleShowSelect} />}
-          {page === 'series'   && <SeriesDetail   session={session} showId={seriesId} onBack={() => handleNav('shows')} onItemPlay={handleItemPlay} />}
-          {page === 'settings' && <SettingsScreen tweaks={t} setTweak={setTweak} session={session} onLogout={handleLogout} />}
-        </main>
-      </div>
-      <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} session={session} onSelect={handleSearchSelect} />
-    </div>
-  );
-}
+        React.useEffect(() => {
+          if (session) localStorage.setItem('inafin_session', JSON.stringify(session));
+          else localStorage.removeItem('inafin_session');
+        }, [session]);
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <ToastProvider><App /></ToastProvider>
-);
+        // Sync session with IINA plugin if available
+        React.useEffect(() => {
+          if (typeof iina === 'undefined' || !iina.onMessage) return;
+          iina.onMessage('session-data', (data) => {
+            if (data && data.serverUrl && data.accessToken && !session) {
+              setSession({
+                url: data.serverUrl,
+                server: data.serverUrl.replace(/^https?:\/\//, ''),
+                user: data.username || 'User',
+                userId: data.userId || '',
+                accessToken: data.accessToken,
+                initials: (data.username || 'U').slice(0, 2).toUpperCase(),
+              });
+            }
+          });
+          iina.postMessage('get-session', {});
+        }, []);
 
-</script>
-</body>
+        // ⌘K shortcut
+        React.useEffect(() => {
+          function onKey(e) {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+              e.preventDefault();
+              setSearchOpen((o) => !o);
+            }
+            if (e.key === 'Escape') setSearchOpen(false);
+          }
+          window.addEventListener('keydown', onKey);
+          return () => window.removeEventListener('keydown', onKey);
+        }, []);
+
+        React.useEffect(() => {
+          if (window.lucide) window.lucide.createIcons();
+        });
+
+        function handleLogin(s) {
+          setSession(s);
+          setPage('home');
+          if (typeof iina !== 'undefined' && iina.postMessage) {
+            iina.postMessage('store-session', {
+              serverUrl: s.url,
+              username: s.user,
+              userId: s.userId,
+              accessToken: s.accessToken,
+            });
+          }
+        }
+
+        function handleLogout() {
+          setSession(null);
+          setPage('home');
+          setSeriesId(null);
+          if (typeof iina !== 'undefined' && iina.postMessage)
+            iina.postMessage('clear-session', {});
+        }
+
+        function handleNav(p) {
+          setPage(p);
+          setSeriesId(null);
+        }
+
+        function handleItemPlay(itemId, title) {
+          const url = INAFIN_API.getStreamUrl(session, itemId);
+          if (typeof iina !== 'undefined' && iina.postMessage)
+            iina.postMessage('play-media', { streamUrl: url, title });
+          toast('Playback started — ' + title);
+        }
+
+        function handleShowSelect(id) {
+          setSeriesId(id);
+          setPage('series');
+        }
+
+        function handleSearchSelect(result) {
+          if (result.type === 'movie') handleItemPlay(result.data.id, result.data.title);
+          else handleShowSelect(result.data.id);
+          setSearchOpen(false);
+        }
+
+        function handleUserMenu(action) {
+          if (action === 'logout') handleLogout();
+          if (action === 'settings') handleNav('settings');
+        }
+
+        const accentClass = t.accentColor !== 'plasma' ? 'accent-' + t.accentColor : '';
+        const aspectClass = 'aspect-' + t.posterAspect;
+        const densityClass = 'density-' + t.gridDensity;
+        const navClass = t.navStyle === 'sidebar' ? '' : 'nav-' + t.navStyle;
+        const patternClass = t.showPattern ? '' : 'no-pattern';
+
+        if (!session) {
+          return (
+            <div className={accentClass}>
+              <LoginScreen onLogin={handleLogin} />
+            </div>
+          );
+        }
+
+        return (
+          <div className={[accentClass, aspectClass, densityClass].filter(Boolean).join(' ')}>
+            <div className={'app-shell ' + [navClass, patternClass].filter(Boolean).join(' ')}>
+              <InafinTopBar
+                page={page}
+                onNav={handleNav}
+                onSearch={() => setSearchOpen(true)}
+                session={session}
+                onUserMenu={handleUserMenu}
+              />
+              <InafinSidebar page={page} onNav={handleNav} />
+              <main className="main-content">
+                {page === 'home' && (
+                  <HomeScreen
+                    session={session}
+                    onItemPlay={handleItemPlay}
+                    onShowSelect={handleShowSelect}
+                    onNav={handleNav}
+                  />
+                )}
+                {page === 'movies' && (
+                  <MoviesScreen session={session} onItemPlay={handleItemPlay} />
+                )}
+                {page === 'shows' && (
+                  <ShowsScreen session={session} onShowSelect={handleShowSelect} />
+                )}
+                {page === 'recent' && (
+                  <RecentScreen
+                    session={session}
+                    onItemPlay={handleItemPlay}
+                    onShowSelect={handleShowSelect}
+                  />
+                )}
+                {page === 'series' && (
+                  <SeriesDetail
+                    session={session}
+                    showId={seriesId}
+                    onBack={() => handleNav('shows')}
+                    onItemPlay={handleItemPlay}
+                  />
+                )}
+                {page === 'settings' && (
+                  <SettingsScreen
+                    tweaks={t}
+                    setTweak={setTweak}
+                    session={session}
+                    onLogout={handleLogout}
+                  />
+                )}
+              </main>
+            </div>
+            <SearchPalette
+              open={searchOpen}
+              onClose={() => setSearchOpen(false)}
+              session={session}
+              onSelect={handleSearchSelect}
+            />
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      );
+    </script>
+  </body>
 </html>

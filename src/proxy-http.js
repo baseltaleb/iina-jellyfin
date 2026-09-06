@@ -109,8 +109,7 @@ function proxyGet(url, options = {}) {
   }
   debugLog(`[proxy-http] Fallback to http.get: ${url}`);
   try {
-      return http.get(url, options);
-    
+    return http.get(url, options);
   } catch (error) {
     debugLog(`ERROR: ${error}`);
   }
@@ -127,7 +126,7 @@ function proxyPost(url, options = {}) {
   }
   debugLog(`[proxy-http] Fallback to http.post: ${url}`);
   try {
-      return http.post(url, options);
+    return http.post(url, options);
   } catch (error) {
     debugLog(`ERROR: ${error}`);
   }

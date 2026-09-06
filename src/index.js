@@ -56,7 +56,13 @@ standaloneWindow.onMessage('clear-session', () => {
 
 standaloneWindow.onMessage('store-session', (data) => {
   if (data && data.serverUrl && data.accessToken) {
-    storeJellyfinSession(data.serverUrl, data.accessToken, data.username, data.password, data.userId);
+    storeJellyfinSession(
+      data.serverUrl,
+      data.accessToken,
+      data.username,
+      data.password,
+      data.userId
+    );
   }
 });
 
@@ -91,11 +97,7 @@ function onFileLoaded(fileUrl) {
         // Start playback tracking for progress sync
         if (preferences.get('sync_playback_progress')) {
           debugLog(`Starting playback tracking for: ${deferredInfo.itemId}`);
-          startPlaybackTracking(
-            deferredInfo.serverBase,
-            deferredInfo.itemId,
-            deferredInfo.apiKey
-          );
+          startPlaybackTracking(deferredInfo.serverBase, deferredInfo.itemId, deferredInfo.apiKey);
         }
 
         // Set video title from metadata if enabled
@@ -122,11 +124,7 @@ function onFileLoaded(fileUrl) {
         // Auto-download subtitles if enabled
         if (preferences.get('auto_download_enabled')) {
           debugLog(`Auto-downloading subtitles for: ${deferredInfo.itemId}`);
-          downloadAllSubtitles(
-            deferredInfo.serverBase,
-            deferredInfo.itemId,
-            deferredInfo.apiKey
-          );
+          downloadAllSubtitles(deferredInfo.serverBase, deferredInfo.itemId, deferredInfo.apiKey);
         }
       }, 3000);
     } else {
