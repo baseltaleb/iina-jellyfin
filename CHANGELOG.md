@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Remove unused pre-redesign browser components and stylesheet
 - Redesign browser UI with React/Inafin design system; persist userId in session storage
 - Move Jellyfin browser UI from sidebar panel to standalone window
 - Rename `src/ui/sidebar/` to `src/ui/browser/`, `JellyfinSidebar` class to `JellyfinBrowser`
