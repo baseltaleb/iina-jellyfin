@@ -1,0 +1,11 @@
+verify:
+  build:
+  lint: pnpm check
+  test:
+  require_tests: false
+cache_dirs: []
+rules: |
+  Run `pnpm check` before you finish; it is the only CI gate.
+  Never edit .prettierrc, .prettierignore, or eslint.config.js to make a check pass.
+  Fix formatting with `pnpm format:fix`, not by hand.
+  Main plugin files in src/ are CommonJS; src/ui/browser files are browser scripts.
