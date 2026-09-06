@@ -1,6 +1,6 @@
 verify:
   build:
-  lint: pnpm check
+  lint: pnpm lint
   test:
   require_tests: false
 cache_dirs:
