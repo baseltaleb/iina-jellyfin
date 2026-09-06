@@ -1,0 +1,13 @@
+verify:
+  build:
+  lint: pnpm check
+  test:
+  require_tests: false
+cache_dirs:
+  - node_modules
+rules: |
+  Run `pnpm check` (eslint + prettier) before every commit; CI gates on it.
+  Never edit `src/ui/browser/*.min.js` vendor files.
+  The browser UI is the inline React app in `src/ui/browser/index.html`; do not add separate component files.
+  Add a CHANGELOG.md line under `## [Unreleased]` for every user-visible or structural change.
+  Plugin code in `src/*.js` is CommonJS; browser code in `src/ui/` runs in a WebView with the `iina` global.
