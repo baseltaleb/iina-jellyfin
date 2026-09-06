@@ -12,23 +12,23 @@ Approach A: New Home Tab Component — additive change that slots alongside exis
 
 ### UI Primitives (pure display, no API calls)
 
-| Component | File | Responsibility |
-|---|---|---|
-| **MediaCard** | `MediaCard.js` (existing, extended) | Card with thumbnail, title, badges. Extended with `showProgressBar` and `subtitle` options. Year badge removed. |
-| **MediaRow** | `MediaRow.js` (new) | Horizontal-scrolling carousel of cards. Takes items + config. Handles empty/loading/error states. Reusable anywhere. |
+| Component     | File                                | Responsibility                                                                                                       |
+| ------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **MediaCard** | `MediaCard.js` (existing, extended) | Card with thumbnail, title, badges. Extended with `showProgressBar` and `subtitle` options. Year badge removed.      |
+| **MediaRow**  | `MediaRow.js` (new)                 | Horizontal-scrolling carousel of cards. Takes items + config. Handles empty/loading/error states. Reusable anywhere. |
 
 ### Data Rows (self-contained: fetch their own data, render via MediaRow)
 
-| Component | File | API Endpoint |
-|---|---|---|
-| **ContinueWatchingRow** | `ContinueWatchingRow.js` | `GET /Users/{userId}/Items/Resume` |
-| **NextUpRow** | `NextUpRow.js` | `GET /Shows/NextUp` |
-| **RecentlyAddedRow** | `RecentlyAddedRow.js` | `GET /Users/{userId}/Items/Latest` with `groupItems=true` |
+| Component               | File                     | API Endpoint                                              |
+| ----------------------- | ------------------------ | --------------------------------------------------------- |
+| **ContinueWatchingRow** | `ContinueWatchingRow.js` | `GET /Users/{userId}/Items/Resume`                        |
+| **NextUpRow**           | `NextUpRow.js`           | `GET /Shows/NextUp`                                       |
+| **RecentlyAddedRow**    | `RecentlyAddedRow.js`    | `GET /Users/{userId}/Items/Latest` with `groupItems=true` |
 
 ### Page Composer
 
-| Component | File | Responsibility |
-|---|---|---|
+| Component   | File         | Responsibility                                                                  |
+| ----------- | ------------ | ------------------------------------------------------------------------------- |
 | **HomeTab** | `HomeTab.js` | Composes the 3 data rows. Thin orchestrator — no API calls, no rendering logic. |
 
 ### Dependency Graph
@@ -48,12 +48,12 @@ Reusable horizontal scroll primitive.
 
 ```js
 new MediaRow({
-  container,          // HTMLElement or selector
-  title,              // Section heading string
-  onItemClick,        // Callback when a card is clicked
-  emptyMessage,       // Text when no items (optional — row hides if empty)
-  showProgressBar,    // Boolean — enables progress overlay on cards
-})
+  container, // HTMLElement or selector
+  title, // Section heading string
+  onItemClick, // Callback when a card is clicked
+  emptyMessage, // Text when no items (optional — row hides if empty)
+  showProgressBar, // Boolean — enables progress overlay on cards
+});
 ```
 
 ### Methods
@@ -113,10 +113,10 @@ New option `subtitle: "The Office - S03E05"`. Renders small text overlay at top-
 
 Year badge removed from MediaCard entirely. Layout:
 
-| Position | Content |
-|---|---|
-| Top-left | Subtitle (when provided) |
-| Bottom-right | Type badge |
+| Position         | Content                     |
+| ---------------- | --------------------------- |
+| Top-left         | Subtitle (when provided)    |
+| Bottom-right     | Type badge                  |
 | Bottom of poster | Progress bar (when enabled) |
 
 ## Data Row Details
@@ -124,10 +124,10 @@ Year badge removed from MediaCard entirely. Layout:
 ### Common Interface
 
 ```js
-constructor({ containerSelector, getBrowser })
-onActivate()   // fetch data if not loaded
-refresh()      // force reload
-reset()        // clear state
+constructor({ containerSelector, getBrowser });
+onActivate(); // fetch data if not loaded
+refresh(); // force reload
+reset(); // clear state
 ```
 
 ### ContinueWatchingRow
@@ -202,22 +202,22 @@ Covers: MediaRow layout, scroll container, fixed-width cards in rows, progress b
 
 ### New Files (6)
 
-| File | Type | Purpose |
-|---|---|---|
-| `components/MediaRow.js` | UI primitive | Reusable horizontal carousel |
-| `components/ContinueWatchingRow.js` | Data row | Resume items with progress bars |
-| `components/NextUpRow.js` | Data row | Next episodes with subtitles |
-| `components/RecentlyAddedRow.js` | Data row | Latest items, grouped |
-| `components/HomeTab.js` | Page composer | Composes 3 data rows |
-| `components/components.css` | Styles | All new component styles |
+| File                                | Type          | Purpose                         |
+| ----------------------------------- | ------------- | ------------------------------- |
+| `components/MediaRow.js`            | UI primitive  | Reusable horizontal carousel    |
+| `components/ContinueWatchingRow.js` | Data row      | Resume items with progress bars |
+| `components/NextUpRow.js`           | Data row      | Next episodes with subtitles    |
+| `components/RecentlyAddedRow.js`    | Data row      | Latest items, grouped           |
+| `components/HomeTab.js`             | Page composer | Composes 3 data rows            |
+| `components/components.css`         | Styles        | All new component styles        |
 
 ### Modified Files (3)
 
-| File | Changes |
-|---|---|
+| File                      | Changes                                               |
+| ------------------------- | ----------------------------------------------------- |
 | `components/MediaCard.js` | Add `showProgressBar` + `subtitle`, remove year badge |
-| `browser/index.html` | Add Home tab (default), script tags, CSS link |
-| `browser/browser.js` | Wire HomeTab, set Home as default active tab |
+| `browser/index.html`      | Add Home tab (default), script tags, CSS link         |
+| `browser/browser.js`      | Wire HomeTab, set Home as default active tab          |
 
 ## Design Principles
 

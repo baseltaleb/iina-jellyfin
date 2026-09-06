@@ -3,25 +3,45 @@
 // Sets window.INAFIN (visual utilities) and window.INAFIN_API (async data fetchers).
 
 (function () {
-
   // ── Visual utilities (same as design prototype) ──────────────────────────
 
   function posterGradient(title) {
     let h = 0;
-    for (let i = 0; i < title.length; i++) h = ((h << 5) - h) + title.charCodeAt(i);
+    for (let i = 0; i < title.length; i++) h = (h << 5) - h + title.charCodeAt(i);
     h = Math.abs(h);
     const hue = h % 360;
     const hue2 = (hue + 40) % 360;
     const angle = 140 + ((h >> 4) % 50);
-    return 'linear-gradient(' + angle + 'deg, hsl(' + hue + ', 30%, 12%), hsl(' + hue2 + ', 40%, 22%))';
+    return (
+      'linear-gradient(' + angle + 'deg, hsl(' + hue + ', 30%, 12%), hsl(' + hue2 + ', 40%, 22%))'
+    );
   }
 
   function getInitials(title) {
-    return title.replace(/^(The |A |An )/i, '').split(/[\s:\-–]+/).map(function (w) { return w[0]; }).filter(function (c) { return c && /[A-Za-z0-9]/.test(c); }).slice(0, 2).join('').toUpperCase();
+    return title
+      .replace(/^(The |A |An )/i, '')
+      .split(/[\s:\-–]+/)
+      .map(function (w) {
+        return w[0];
+      })
+      .filter(function (c) {
+        return c && /[A-Za-z0-9]/.test(c);
+      })
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
   }
 
   function getImageUrl(session, itemId, maxWidth) {
-    return session.url + '/Items/' + itemId + '/Images/Primary?maxWidth=' + (maxWidth || 300) + '&api_key=' + session.accessToken;
+    return (
+      session.url +
+      '/Items/' +
+      itemId +
+      '/Images/Primary?maxWidth=' +
+      (maxWidth || 300) +
+      '&api_key=' +
+      session.accessToken
+    );
   }
 
   // ── Data helpers ──────────────────────────────────────────────────────────
@@ -89,7 +109,8 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization': 'MediaBrowser Client="Inafin", Device="Browser", DeviceId="inafin-browser", Version="1.0"',
+        'X-Emby-Authorization':
+          'MediaBrowser Client="Inafin", Device="Browser", DeviceId="inafin-browser", Version="1.0"',
       },
       body: JSON.stringify({ Username: username, Pw: password }),
     });
@@ -120,7 +141,8 @@
       Limit: 10,
     });
     return (data.Items || []).map(function (item) {
-      const pct = (item.UserData && item.UserData.PlayedPercentage) ? item.UserData.PlayedPercentage / 100 : 0;
+      const pct =
+        item.UserData && item.UserData.PlayedPercentage ? item.UserData.PlayedPercentage / 100 : 0;
       const played = (item.UserData && item.UserData.PlaybackPositionTicks) || 0;
       if (item.Type === 'Episode') {
         return {
@@ -173,9 +195,21 @@
     });
     return (data || []).map(function (item) {
       if (item.Type === 'Series') {
-        return { type: 'show', id: item.Id, title: item.Name, year: item.ProductionYear, addedAgo: timeAgo(item.DateCreated) };
+        return {
+          type: 'show',
+          id: item.Id,
+          title: item.Name,
+          year: item.ProductionYear,
+          addedAgo: timeAgo(item.DateCreated),
+        };
       }
-      return { type: 'movie', id: item.Id, title: item.Name, year: item.ProductionYear, addedAgo: timeAgo(item.DateCreated) };
+      return {
+        type: 'movie',
+        id: item.Id,
+        title: item.Name,
+        year: item.ProductionYear,
+        addedAgo: timeAgo(item.DateCreated),
+      };
     });
   }
 
@@ -186,7 +220,7 @@
       Recursive: true,
       Fields: 'Genres,UserData,RunTimeTicks',
       SortBy: sortMap[sortBy] || 'SortName',
-      SortOrder: (sortBy === 'year' || sortBy === 'recent') ? 'Descending' : 'Ascending',
+      SortOrder: sortBy === 'year' || sortBy === 'recent' ? 'Descending' : 'Ascending',
       Limit: 200,
     });
     return (data.Items || []).map(function (m) {
@@ -196,7 +230,7 @@
         year: m.ProductionYear,
         runtime: ticksToRuntime(m.RunTimeTicks),
         genres: m.Genres || [],
-        watched: (m.UserData && m.UserData.Played) ? 1 : 0,
+        watched: m.UserData && m.UserData.Played ? 1 : 0,
       };
     });
   }
@@ -211,17 +245,19 @@
       SortOrder: sortBy === 'year' ? 'Descending' : 'Ascending',
       Limit: 200,
     });
-    return (data.Items || []).filter(function (s) {
-      return !s.ChildCount || s.ChildCount > 0;
-    }).map(function (s) {
-      return {
-        id: s.Id,
-        title: s.Name,
-        year: s.ProductionYear,
-        genres: s.Genres || [],
-        seasonCount: s.ChildCount || 0,
-      };
-    });
+    return (data.Items || [])
+      .filter(function (s) {
+        return !s.ChildCount || s.ChildCount > 0;
+      })
+      .map(function (s) {
+        return {
+          id: s.Id,
+          title: s.Name,
+          year: s.ProductionYear,
+          genres: s.Genres || [],
+          seasonCount: s.ChildCount || 0,
+        };
+      });
   }
 
   async function fetchSeriesDetail(session, showId) {
@@ -233,29 +269,36 @@
       Fields: 'UserData',
     });
 
-    const seasons = await Promise.all((seasonsData.Items || []).map(async function (season) {
-      const epData = await apiGet(session, '/Shows/' + showId + '/Episodes', {
-        seasonId: season.Id,
-        userId: session.userId,
-        Fields: 'UserData,RunTimeTicks',
-      });
-      return {
-        num: season.IndexNumber || 1,
-        id: season.Id,
-        year: season.ProductionYear,
-        episodes: (epData.Items || []).map(function (ep) {
-          const pct = (ep.UserData && ep.UserData.PlayedPercentage) ? ep.UserData.PlayedPercentage / 100 : 0;
-          return {
-            num: ep.IndexNumber || 1,
-            id: ep.Id,
-            title: ep.Name,
-            runtime: ticksToRuntime(ep.RunTimeTicks),
-            watched: (ep.UserData && ep.UserData.Played) ? 1.0 :
-                     (ep.UserData && ep.UserData.PlaybackPositionTicks > 0) ? pct : 0,
-          };
-        }),
-      };
-    }));
+    const seasons = await Promise.all(
+      (seasonsData.Items || []).map(async function (season) {
+        const epData = await apiGet(session, '/Shows/' + showId + '/Episodes', {
+          seasonId: season.Id,
+          userId: session.userId,
+          Fields: 'UserData,RunTimeTicks',
+        });
+        return {
+          num: season.IndexNumber || 1,
+          id: season.Id,
+          year: season.ProductionYear,
+          episodes: (epData.Items || []).map(function (ep) {
+            const pct =
+              ep.UserData && ep.UserData.PlayedPercentage ? ep.UserData.PlayedPercentage / 100 : 0;
+            return {
+              num: ep.IndexNumber || 1,
+              id: ep.Id,
+              title: ep.Name,
+              runtime: ticksToRuntime(ep.RunTimeTicks),
+              watched:
+                ep.UserData && ep.UserData.Played
+                  ? 1.0
+                  : ep.UserData && ep.UserData.PlaybackPositionTicks > 0
+                    ? pct
+                    : 0,
+            };
+          }),
+        };
+      })
+    );
 
     return {
       id: showId,
@@ -278,9 +321,21 @@
     const shows = [];
     (data.SearchHints || []).forEach(function (item) {
       if (item.Type === 'Movie') {
-        movies.push({ id: item.ItemId, title: item.Name, year: item.ProductionYear, runtime: '', genres: [] });
+        movies.push({
+          id: item.ItemId,
+          title: item.Name,
+          year: item.ProductionYear,
+          runtime: '',
+          genres: [],
+        });
       } else if (item.Type === 'Series') {
-        shows.push({ id: item.ItemId, title: item.Name, year: item.ProductionYear, genres: [], seasonCount: 0 });
+        shows.push({
+          id: item.ItemId,
+          title: item.Name,
+          year: item.ProductionYear,
+          genres: [],
+          seasonCount: 0,
+        });
       }
     });
     return { movies: movies, shows: shows };
@@ -309,5 +364,4 @@
     search: searchItems,
     getStreamUrl: getStreamUrl,
   };
-
 })();
