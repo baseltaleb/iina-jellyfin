@@ -1,0 +1,12 @@
+verify:
+  build:
+  lint: pnpm lint
+  test:
+  require_tests: false
+cache_dirs:
+  - node_modules
+rules: |
+  Do not run prettier --write on src/ui/browser/index.html; it already fails prettier --check at HEAD.
+  Add a line to CHANGELOG.md under ## [Unreleased] for every user-facing change.
+  Do not add tests frameworks or build steps; the package has only lint and format scripts.
+  Commit with a conventional prefix (fix:, feat:, chore:) and do not push.

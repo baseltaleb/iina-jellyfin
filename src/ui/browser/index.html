@@ -470,7 +470,7 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
           {cw.map((item, i) => (
             <ContinueCard key={i} item={item} size="md" session={session} onClick={() => {
               if (item.type === 'movie') onItemPlay(item.id, item.title);
-              else onShowSelect(item.id);
+              else onItemPlay(item.episodeId, item.showTitle + ' S' + item.season + 'E' + item.episode);
             }} />
           ))}
         </div>
@@ -481,7 +481,7 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
       {!nuLoading && nu.length > 0 && (
         <div className="media-row">
           {nu.map((item, i) => (
-            <EpisodeCard key={i} item={item} session={session} onClick={() => onShowSelect(item.id)} />
+            <EpisodeCard key={i} item={item} session={session} onClick={() => onItemPlay(item.episodeId, item.showTitle + ' S' + item.season + 'E' + item.episode)} />
           ))}
         </div>
       )}
