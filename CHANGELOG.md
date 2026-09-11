@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Refresh Continue Watching, Next Up, and series episode watched status when the browser window regains focus (at most once per 15 seconds)
 - Hide TV shows with no episodes (empty series folders) from the TV Shows tab
 - Watched indicator in episode list: green ✓ badge for fully watched episodes, progress bar for partially watched
 - Auto-open Jellyfin browser window on startup (configurable via `auto_open_browser` preference)
