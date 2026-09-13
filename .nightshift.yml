@@ -3,9 +3,13 @@ verify:
   lint: pnpm check
   test:
   require_tests: false
-cache_dirs: []
+cache_dirs:
+  - node_modules
 rules: |
   Run `pnpm check` before you finish; it is the only CI gate.
   Never edit .prettierrc, .prettierignore, or eslint.config.js to make a check pass.
   Fix formatting with `pnpm format:fix`, not by hand.
   Main plugin files in src/ are CommonJS; src/ui/browser files are browser scripts.
+  Add a line to CHANGELOG.md under ## [Unreleased] for every user-facing change.
+  Do not add tests frameworks or build steps; the package has only lint and format scripts.
+  Commit with a conventional prefix (fix:, feat:, chore:) and do not push.

@@ -763,7 +763,11 @@
                     session={session}
                     onClick={() => {
                       if (item.type === 'movie') onItemPlay(item.id, item.title);
-                      else onShowSelect(item.id);
+                      else
+                        onItemPlay(
+                          item.episodeId,
+                          item.showTitle + ' S' + item.season + 'E' + item.episode
+                        );
                     }}
                   />
                 ))}
@@ -779,7 +783,12 @@
                     key={i}
                     item={item}
                     session={session}
-                    onClick={() => onShowSelect(item.id)}
+                    onClick={() =>
+                      onItemPlay(
+                        item.episodeId,
+                        item.showTitle + ' S' + item.season + 'E' + item.episode
+                      )
+                    }
                   />
                 ))}
               </div>
