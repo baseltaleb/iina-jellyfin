@@ -6,10 +6,11 @@ verify:
 cache_dirs:
   - node_modules
 rules: |
-  Run `pnpm check` before you finish; it is the only CI gate.
-  Never edit .prettierrc, .prettierignore, or eslint.config.js to make a check pass.
-  Fix formatting with `pnpm format:fix`, not by hand.
-  Main plugin files in src/ are CommonJS; src/ui/browser files are browser scripts.
-  Add a line to CHANGELOG.md under ## [Unreleased] for every user-facing change.
-  Do not add tests frameworks or build steps; the package has only lint and format scripts.
+  Run `pnpm check` (eslint + prettier) before every commit; CI gates on it.
+  Do not run `prettier --write` on `src/ui/browser/index.html`; it already fails `prettier --check` at HEAD.
+  Never edit `src/ui/browser/*.min.js` vendor files.
+  The browser UI is the inline React app in `src/ui/browser/index.html`; do not add separate component files.
+  Add a CHANGELOG.md line under `## [Unreleased]` for every user-visible or structural change.
+  Do not add test frameworks or build steps; the package has only lint and format scripts.
   Commit with a conventional prefix (fix:, feat:, chore:) and do not push.
+  Plugin code in `src/*.js` is CommonJS; browser code in `src/ui/` runs in a WebView with the `iina` global.

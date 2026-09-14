@@ -270,12 +270,6 @@ function showJellyfinBrowser() {
   standaloneWindow.setFrame({ x: 100, y: 100, width: 400, height: 600 });
   standaloneWindow.open();
 
-  setTimeout(() => {
-    if (sessionData) {
-      standaloneWindow.postMessage('session-available', sessionData);
-    }
-  }, 1000);
-
   if (sessionData) {
     core.osd(
       `Jellyfin Browser opened\nServer: ${sessionData.serverUrl.replace(/^https?:\/\//, '')}`
