@@ -42,6 +42,30 @@ function useTweaks(defaults) {
   return [values, setTweak];
 }
 
+function useRefreshOnFocus(callback, minIntervalMs) {
+  const cbRef = React.useRef(callback);
+  cbRef.current = callback;
+  const lastRun = React.useRef(Date.now());
+
+  React.useEffect(() => {
+    function run() {
+      const now = Date.now();
+      if (now - lastRun.current < minIntervalMs) return;
+      lastRun.current = now;
+      cbRef.current();
+    }
+    function onVisibility() {
+      if (document.visibilityState === 'visible') run();
+    }
+    window.addEventListener('focus', run);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', run);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [minIntervalMs]);
+}
+
 // ─────────────────────────────────────────────────────────────
 // SHARED COMPONENTS
 // ─────────────────────────────────────────────────────────────
@@ -447,6 +471,15 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
       .catch(e => { setCwError(e.message || 'Failed to load'); setCwLoading(false); });
   }
 
+  function refresh() {
+    INAFIN_API.fetchContinueWatching(session)
+      .then(d => { setCw(d); setCwError(null); })
+      .catch(() => {});
+    INAFIN_API.fetchNextUp(session)
+      .then(d => setNu(d))
+      .catch(() => {});
+  }
+
   React.useEffect(() => {
     loadCw();
     INAFIN_API.fetchNextUp(session)
@@ -456,6 +489,8 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
       .then(d => { setRa(d); setRaLoading(false); })
       .catch(() => setRaLoading(false));
   }, []);
+
+  useRefreshOnFocus(refresh, 15000);
 
   return (
     <div className="page-enter">
@@ -630,7 +665,14 @@ function SeriesDetail({ session, showId, onBack, onItemPlay }) {
       .catch(e => { setError(e.message || 'Failed to load'); setLoading(false); });
   }
 
+  function refresh() {
+    INAFIN_API.fetchSeriesDetail(session, showId)
+      .then(d => { setShow(d); setError(null); setActiveSeason(prev => prev < d.seasons.length ? prev : 0); })
+      .catch(() => {});
+  }
+
   React.useEffect(() => { load(); }, [showId]);
+  useRefreshOnFocus(refresh, 15000);
 
   if (loading) return (
     <div className="page-enter">
