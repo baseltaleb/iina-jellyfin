@@ -1,4 +1,3 @@
-
 // tweaks-panel.jsx — Reusable Tweaks shell + form-control helpers.
 // Provides useTweaks() hook and TweaksPanel component.
 // Used by Inafin for the in-app settings system.
@@ -34,11 +33,13 @@ function useTweaks(defaults) {
   });
 
   const setTweak = React.useCallback((keyOrEdits, val) => {
-    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
-      ? keyOrEdits : { [keyOrEdits]: val };
+    const edits =
+      typeof keyOrEdits === 'object' && keyOrEdits !== null ? keyOrEdits : { [keyOrEdits]: val };
     setValues((prev) => {
       const next = { ...prev, ...edits };
-      try { localStorage.setItem('inafin_tweaks', JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem('inafin_tweaks', JSON.stringify(next));
+      } catch {}
       return next;
     });
   }, []);

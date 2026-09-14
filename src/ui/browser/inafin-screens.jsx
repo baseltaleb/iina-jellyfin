@@ -11,18 +11,30 @@ function LoginScreen({ onLogin }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!server || !user || !pass) { setError('All fields are required.'); return; }
-    setLoading(true); setError('');
+    if (!server || !user || !pass) {
+      setError('All fields are required.');
+      return;
+    }
+    setLoading(true);
+    setError('');
     INAFIN_API.login(server, user, pass)
-      .then(function (s) { setLoading(false); onLogin(s); })
-      .catch(function (e) { setLoading(false); setError(e.message || 'Authentication failed'); });
+      .then(function (s) {
+        setLoading(false);
+        onLogin(s);
+      })
+      .catch(function (e) {
+        setLoading(false);
+        setError(e.message || 'Authentication failed');
+      });
   }
 
   return (
     <div className="login-screen">
       <form className="login-card" onSubmit={handleSubmit}>
-        <span className="login-corner tl"></span><span className="login-corner tr"></span>
-        <span className="login-corner bl"></span><span className="login-corner br"></span>
+        <span className="login-corner tl"></span>
+        <span className="login-corner tr"></span>
+        <span className="login-corner bl"></span>
+        <span className="login-corner br"></span>
         <div className="login-scan"></div>
         <div className="login-brand">
           <span className="wordmark">inafin</span>
@@ -30,17 +42,40 @@ function LoginScreen({ onLogin }) {
         </div>
         <div className="login-field">
           <label>SERVER ADDRESS</label>
-          <input type="text" placeholder="jellyfin.example.com" value={server} onChange={function (e) { setServer(e.target.value); }} />
+          <input
+            type="text"
+            placeholder="jellyfin.example.com"
+            value={server}
+            onChange={function (e) {
+              setServer(e.target.value);
+            }}
+          />
         </div>
         <div className="login-field">
           <label>USERNAME</label>
-          <input type="text" placeholder="admin" value={user} onChange={function (e) { setUser(e.target.value); }} />
+          <input
+            type="text"
+            placeholder="admin"
+            value={user}
+            onChange={function (e) {
+              setUser(e.target.value);
+            }}
+          />
         </div>
         <div className="login-field">
           <label>PASSWORD</label>
-          <input type="password" placeholder="••••••••" value={pass} onChange={function (e) { setPass(e.target.value); }} />
+          <input
+            type="password"
+            placeholder="••••••••"
+            value={pass}
+            onChange={function (e) {
+              setPass(e.target.value);
+            }}
+          />
         </div>
-        <button className="login-btn" type="submit" disabled={loading}>{loading ? 'CONNECTING...' : 'CONNECT'}</button>
+        <button className="login-btn" type="submit" disabled={loading}>
+          {loading ? 'CONNECTING...' : 'CONNECT'}
+        </button>
         {error && <div className="login-error">{error}</div>}
       </form>
     </div>
@@ -59,20 +94,37 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
   var [raLoading, setRaLoading] = React.useState(true);
 
   function loadCw() {
-    setCwLoading(true); setCwError(null);
+    setCwLoading(true);
+    setCwError(null);
     INAFIN_API.fetchContinueWatching(session)
-      .then(function (d) { setCw(d); setCwLoading(false); })
-      .catch(function (e) { setCwError(e.message || 'Failed to load'); setCwLoading(false); });
+      .then(function (d) {
+        setCw(d);
+        setCwLoading(false);
+      })
+      .catch(function (e) {
+        setCwError(e.message || 'Failed to load');
+        setCwLoading(false);
+      });
   }
 
   React.useEffect(function () {
     loadCw();
     INAFIN_API.fetchNextUp(session)
-      .then(function (d) { setNu(d); setNuLoading(false); })
-      .catch(function () { setNuLoading(false); });
+      .then(function (d) {
+        setNu(d);
+        setNuLoading(false);
+      })
+      .catch(function () {
+        setNuLoading(false);
+      });
     INAFIN_API.fetchRecentlyAdded(session)
-      .then(function (d) { setRa(d); setRaLoading(false); })
-      .catch(function () { setRaLoading(false); });
+      .then(function (d) {
+        setRa(d);
+        setRaLoading(false);
+      })
+      .catch(function () {
+        setRaLoading(false);
+      });
   }, []);
 
   return (
@@ -82,15 +134,33 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
       {cwLoading && <LoadingState />}
       {cwError && <ErrorBanner message={cwError} onRetry={loadCw} />}
       {!cwLoading && !cwError && cw.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-muted)', letterSpacing: '0.08em', padding: '16px 0' }}>Nothing in progress</div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--fg-muted)',
+            letterSpacing: '0.08em',
+            padding: '16px 0',
+          }}
+        >
+          Nothing in progress
+        </div>
       )}
       {!cwLoading && !cwError && cw.length > 0 && (
         <div className="media-row">
           {cw.map(function (item, i) {
-            return <ContinueCard key={i} item={item} size="md" session={session} onClick={function () {
-              if (item.type === 'movie') onItemPlay(item.id, item.title);
-              else onShowSelect(item.id);
-            }} />;
+            return (
+              <ContinueCard
+                key={i}
+                item={item}
+                size="md"
+                session={session}
+                onClick={function () {
+                  if (item.type === 'movie') onItemPlay(item.id, item.title);
+                  else onShowSelect(item.id);
+                }}
+              />
+            );
           })}
         </div>
       )}
@@ -101,30 +171,75 @@ function HomeScreen({ session, onItemPlay, onShowSelect, onNav }) {
       {!nuLoading && nu.length > 0 && (
         <div className="media-row">
           {nu.map(function (item, i) {
-            return <EpisodeCard key={i} item={item} session={session} onClick={function () { onShowSelect(item.id); }} />;
+            return (
+              <EpisodeCard
+                key={i}
+                item={item}
+                session={session}
+                onClick={function () {
+                  onShowSelect(item.id);
+                }}
+              />
+            );
           })}
         </div>
       )}
 
       {/* Recently Added */}
-      <SectionHeader label="RECENTLY ADDED" onSeeAll={function () { onNav('recent'); }} />
+      <SectionHeader
+        label="RECENTLY ADDED"
+        onSeeAll={function () {
+          onNav('recent');
+        }}
+      />
       {raLoading && <LoadingState />}
       {!raLoading && ra.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg-muted)', letterSpacing: '0.08em', padding: '16px 0' }}>Nothing recently added</div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--fg-muted)',
+            letterSpacing: '0.08em',
+            padding: '16px 0',
+          }}
+        >
+          Nothing recently added
+        </div>
       )}
       {!raLoading && ra.length > 0 && (
         <div className="media-row">
           {ra.map(function (item, i) {
             if (item.type === 'show') {
-              return <PosterCard key={i} title={item.title} year={item.year} size="md"
-                       itemId={item.id} session={session}
-                       subtitle={item.addedAgo} showPlay={false}
-                       onClick={function () { onShowSelect(item.id); }} />;
+              return (
+                <PosterCard
+                  key={i}
+                  title={item.title}
+                  year={item.year}
+                  size="md"
+                  itemId={item.id}
+                  session={session}
+                  subtitle={item.addedAgo}
+                  showPlay={false}
+                  onClick={function () {
+                    onShowSelect(item.id);
+                  }}
+                />
+              );
             }
-            return <PosterCard key={i} title={item.title} year={item.year} size="md"
-                     itemId={item.id} session={session}
-                     subtitle={item.addedAgo}
-                     onClick={function () { onItemPlay(item.id, item.title); }} />;
+            return (
+              <PosterCard
+                key={i}
+                title={item.title}
+                year={item.year}
+                size="md"
+                itemId={item.id}
+                session={session}
+                subtitle={item.addedAgo}
+                onClick={function () {
+                  onItemPlay(item.id, item.title);
+                }}
+              />
+            );
           })}
         </div>
       )}
@@ -140,13 +255,25 @@ function MoviesScreen({ session, onItemPlay }) {
   var [sort, setSort] = React.useState('title');
 
   function load() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     INAFIN_API.fetchMovies(session, sort)
-      .then(function (d) { setItems(d); setLoading(false); })
-      .catch(function (e) { setError(e.message || 'Failed to load'); setLoading(false); });
+      .then(function (d) {
+        setItems(d);
+        setLoading(false);
+      })
+      .catch(function (e) {
+        setError(e.message || 'Failed to load');
+        setLoading(false);
+      });
   }
 
-  React.useEffect(function () { load(); }, [sort]);
+  React.useEffect(
+    function () {
+      load();
+    },
+    [sort]
+  );
 
   return (
     <div className="page-enter" key="movies">
@@ -156,22 +283,65 @@ function MoviesScreen({ session, onItemPlay }) {
           <h2>Movies</h2>
         </div>
         <div className="sort-controls">
-          <button className={'sort-btn' + (sort === 'title' ? ' on' : '')} onClick={function () { setSort('title'); }}>A→Z</button>
-          <button className={'sort-btn' + (sort === 'year' ? ' on' : '')} onClick={function () { setSort('year'); }}>YEAR</button>
-          <button className={'sort-btn' + (sort === 'recent' ? ' on' : '')} onClick={function () { setSort('recent'); }}>ADDED</button>
+          <button
+            className={'sort-btn' + (sort === 'title' ? ' on' : '')}
+            onClick={function () {
+              setSort('title');
+            }}
+          >
+            A→Z
+          </button>
+          <button
+            className={'sort-btn' + (sort === 'year' ? ' on' : '')}
+            onClick={function () {
+              setSort('year');
+            }}
+          >
+            YEAR
+          </button>
+          <button
+            className={'sort-btn' + (sort === 'recent' ? ' on' : '')}
+            onClick={function () {
+              setSort('recent');
+            }}
+          >
+            ADDED
+          </button>
         </div>
       </div>
       {loading && <LoadingState />}
       {error && <ErrorBanner message={error} onRetry={load} />}
       {!loading && !error && items.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-muted)', letterSpacing: '0.08em', textAlign: 'center', padding: '60px 0' }}>NO MOVIES FOUND</div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            color: 'var(--fg-muted)',
+            letterSpacing: '0.08em',
+            textAlign: 'center',
+            padding: '60px 0',
+          }}
+        >
+          NO MOVIES FOUND
+        </div>
       )}
       {!loading && !error && items.length > 0 && (
         <div className="media-grid">
           {items.map(function (m) {
-            return <PosterCard key={m.id} title={m.title} year={m.year} genres={m.genres}
-                     itemId={m.id} session={session} watched={m.watched}
-                     onClick={function () { onItemPlay(m.id, m.title); }} />;
+            return (
+              <PosterCard
+                key={m.id}
+                title={m.title}
+                year={m.year}
+                genres={m.genres}
+                itemId={m.id}
+                session={session}
+                watched={m.watched}
+                onClick={function () {
+                  onItemPlay(m.id, m.title);
+                }}
+              />
+            );
           })}
         </div>
       )}
@@ -187,13 +357,25 @@ function ShowsScreen({ session, onShowSelect }) {
   var [sort, setSort] = React.useState('title');
 
   function load() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     INAFIN_API.fetchShows(session, sort)
-      .then(function (d) { setItems(d); setLoading(false); })
-      .catch(function (e) { setError(e.message || 'Failed to load'); setLoading(false); });
+      .then(function (d) {
+        setItems(d);
+        setLoading(false);
+      })
+      .catch(function (e) {
+        setError(e.message || 'Failed to load');
+        setLoading(false);
+      });
   }
 
-  React.useEffect(function () { load(); }, [sort]);
+  React.useEffect(
+    function () {
+      load();
+    },
+    [sort]
+  );
 
   return (
     <div className="page-enter" key="shows">
@@ -203,23 +385,62 @@ function ShowsScreen({ session, onShowSelect }) {
           <h2>TV Shows</h2>
         </div>
         <div className="sort-controls">
-          <button className={'sort-btn' + (sort === 'title' ? ' on' : '')} onClick={function () { setSort('title'); }}>A→Z</button>
-          <button className={'sort-btn' + (sort === 'year' ? ' on' : '')} onClick={function () { setSort('year'); }}>YEAR</button>
+          <button
+            className={'sort-btn' + (sort === 'title' ? ' on' : '')}
+            onClick={function () {
+              setSort('title');
+            }}
+          >
+            A→Z
+          </button>
+          <button
+            className={'sort-btn' + (sort === 'year' ? ' on' : '')}
+            onClick={function () {
+              setSort('year');
+            }}
+          >
+            YEAR
+          </button>
         </div>
       </div>
       {loading && <LoadingState />}
       {error && <ErrorBanner message={error} onRetry={load} />}
       {!loading && !error && items.length === 0 && (
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg-muted)', letterSpacing: '0.08em', textAlign: 'center', padding: '60px 0' }}>NO SHOWS FOUND</div>
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            color: 'var(--fg-muted)',
+            letterSpacing: '0.08em',
+            textAlign: 'center',
+            padding: '60px 0',
+          }}
+        >
+          NO SHOWS FOUND
+        </div>
       )}
       {!loading && !error && items.length > 0 && (
         <div className="media-grid">
           {items.map(function (s) {
-            return <PosterCard key={s.id} title={s.title} year={s.year} genres={s.genres}
-                     itemId={s.id} session={session}
-                     subtitle={s.seasonCount > 0 ? s.seasonCount + ' season' + (s.seasonCount > 1 ? 's' : '') : ''}
-                     showPlay={false}
-                     onClick={function () { onShowSelect(s.id); }} />;
+            return (
+              <PosterCard
+                key={s.id}
+                title={s.title}
+                year={s.year}
+                genres={s.genres}
+                itemId={s.id}
+                session={session}
+                subtitle={
+                  s.seasonCount > 0
+                    ? s.seasonCount + ' season' + (s.seasonCount > 1 ? 's' : '')
+                    : ''
+                }
+                showPlay={false}
+                onClick={function () {
+                  onShowSelect(s.id);
+                }}
+              />
+            );
           })}
         </div>
       )}
@@ -234,13 +455,22 @@ function RecentScreen({ session, onItemPlay, onShowSelect }) {
   var [error, setError] = React.useState(null);
 
   function load() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     INAFIN_API.fetchRecentlyAdded(session)
-      .then(function (d) { setItems(d); setLoading(false); })
-      .catch(function (e) { setError(e.message || 'Failed to load'); setLoading(false); });
+      .then(function (d) {
+        setItems(d);
+        setLoading(false);
+      })
+      .catch(function (e) {
+        setError(e.message || 'Failed to load');
+        setLoading(false);
+      });
   }
 
-  React.useEffect(function () { load(); }, []);
+  React.useEffect(function () {
+    load();
+  }, []);
 
   return (
     <div className="page-enter" key="recent">
@@ -256,15 +486,34 @@ function RecentScreen({ session, onItemPlay, onShowSelect }) {
         <div className="media-grid">
           {items.map(function (item, i) {
             if (item.type === 'show') {
-              return <PosterCard key={i} title={item.title} year={item.year}
-                       itemId={item.id} session={session}
-                       subtitle={item.addedAgo} showPlay={false}
-                       onClick={function () { onShowSelect(item.id); }} />;
+              return (
+                <PosterCard
+                  key={i}
+                  title={item.title}
+                  year={item.year}
+                  itemId={item.id}
+                  session={session}
+                  subtitle={item.addedAgo}
+                  showPlay={false}
+                  onClick={function () {
+                    onShowSelect(item.id);
+                  }}
+                />
+              );
             }
-            return <PosterCard key={i} title={item.title} year={item.year}
-                     itemId={item.id} session={session}
-                     subtitle={item.addedAgo}
-                     onClick={function () { onItemPlay(item.id, item.title); }} />;
+            return (
+              <PosterCard
+                key={i}
+                title={item.title}
+                year={item.year}
+                itemId={item.id}
+                session={session}
+                subtitle={item.addedAgo}
+                onClick={function () {
+                  onItemPlay(item.id, item.title);
+                }}
+              />
+            );
           })}
         </div>
       )}
@@ -281,33 +530,52 @@ function SeriesDetail({ session, showId, onBack, onItemPlay }) {
   var toast = useToast();
 
   function load() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     INAFIN_API.fetchSeriesDetail(session, showId)
-      .then(function (d) { setShow(d); setLoading(false); setActiveSeason(0); })
-      .catch(function (e) { setError(e.message || 'Failed to load'); setLoading(false); });
+      .then(function (d) {
+        setShow(d);
+        setLoading(false);
+        setActiveSeason(0);
+      })
+      .catch(function (e) {
+        setError(e.message || 'Failed to load');
+        setLoading(false);
+      });
   }
 
-  React.useEffect(function () { load(); }, [showId]);
-
-  if (loading) return (
-    <div className="page-enter">
-      <button className="series-back" onClick={onBack}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6"/></svg>
-        Back
-      </button>
-      <LoadingState />
-    </div>
+  React.useEffect(
+    function () {
+      load();
+    },
+    [showId]
   );
 
-  if (error) return (
-    <div className="page-enter">
-      <button className="series-back" onClick={onBack}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6"/></svg>
-        Back
-      </button>
-      <ErrorBanner message={error} onRetry={load} />
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="page-enter">
+        <button className="series-back" onClick={onBack}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+        <LoadingState />
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="page-enter">
+        <button className="series-back" onClick={onBack}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+        <ErrorBanner message={error} onRetry={load} />
+      </div>
+    );
 
   if (!show) return null;
 
@@ -332,7 +600,9 @@ function SeriesDetail({ session, showId, onBack, onItemPlay }) {
   return (
     <div className="page-enter" key={'series-' + showId}>
       <button className="series-back" onClick={onBack}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
         Back
       </button>
 
@@ -340,15 +610,28 @@ function SeriesDetail({ session, showId, onBack, onItemPlay }) {
         <h2 className="series-title">{show.title}</h2>
         <div className="series-meta-row">
           <span className="series-meta-item">{show.year}</span>
-          <span className="series-meta-item">{show.seasons.length} SEASON{show.seasons.length > 1 ? 'S' : ''}</span>
-          {show.genres.map(function (g) { return <span key={g} className="series-genre">{g}</span>; })}
+          <span className="series-meta-item">
+            {show.seasons.length} SEASON{show.seasons.length > 1 ? 'S' : ''}
+          </span>
+          {show.genres.map(function (g) {
+            return (
+              <span key={g} className="series-genre">
+                {g}
+              </span>
+            );
+          })}
         </div>
         {show.overview && <p className="series-overview">{show.overview}</p>}
         {nextEp && (
-          <button className="series-play-btn" onClick={function () {
-            onItemPlay(nextEp.id, show.title + ' S' + nextEp.season + 'E' + nextEp.episode);
-          }}>
-            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="8,5 19,12 8,19"/></svg>
+          <button
+            className="series-play-btn"
+            onClick={function () {
+              onItemPlay(nextEp.id, show.title + ' S' + nextEp.season + 'E' + nextEp.episode);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <polygon points="8,5 19,12 8,19" />
+            </svg>
             PLAY S{nextEp.season}E{nextEp.episode}
           </button>
         )}
@@ -356,24 +639,46 @@ function SeriesDetail({ session, showId, onBack, onItemPlay }) {
 
       <div className="season-tabs">
         {show.seasons.map(function (s, idx) {
-          return <button key={s.num} className={'season-tab' + (activeSeason === idx ? ' on' : '')}
-                        onClick={function () { setActiveSeason(idx); }}>Season {s.num}</button>;
+          return (
+            <button
+              key={s.num}
+              className={'season-tab' + (activeSeason === idx ? ' on' : '')}
+              onClick={function () {
+                setActiveSeason(idx);
+              }}
+            >
+              Season {s.num}
+            </button>
+          );
         })}
       </div>
 
       <div className="episode-list">
         {season.episodes.map(function (ep) {
           return (
-            <div key={ep.num} className="episode-row" onClick={function () {
-              onItemPlay(ep.id, show.title + ' S' + season.num + 'E' + ep.num);
-            }}>
+            <div
+              key={ep.num}
+              className="episode-row"
+              onClick={function () {
+                onItemPlay(ep.id, show.title + ' S' + season.num + 'E' + ep.num);
+              }}
+            >
               <span className="ep-num">{String(ep.num).padStart(2, '0')}</span>
               <span className="ep-row-title">{ep.title}</span>
               <span className="ep-row-runtime">{ep.runtime}</span>
               <span className="ep-row-status">
-                {ep.watched >= 1 ? <span className="ep-watched-dot"></span>
-                  : ep.watched > 0 ? <div className="ep-partial-bar"><div className="ep-partial-fill" style={{ width: (ep.watched * 100) + '%' }}></div></div>
-                  : <span className="ep-unplayed-dot"></span>}
+                {ep.watched >= 1 ? (
+                  <span className="ep-watched-dot"></span>
+                ) : ep.watched > 0 ? (
+                  <div className="ep-partial-bar">
+                    <div
+                      className="ep-partial-fill"
+                      style={{ width: ep.watched * 100 + '%' }}
+                    ></div>
+                  </div>
+                ) : (
+                  <span className="ep-unplayed-dot"></span>
+                )}
               </span>
             </div>
           );
@@ -386,13 +691,15 @@ function SeriesDetail({ session, showId, onBack, onItemPlay }) {
 /* ─── Settings Screen ─── */
 function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
   var accentOptions = [
-    { id: 'plasma',  label: 'PLASMA',  color: '#14c2ee' },
-    { id: 'ember',   label: 'EMBER',   color: '#ff7a2e' },
-    { id: 'ion',     label: 'ION',     color: '#6f4cf5' },
+    { id: 'plasma', label: 'PLASMA', color: '#14c2ee' },
+    { id: 'ember', label: 'EMBER', color: '#ff7a2e' },
+    { id: 'ion', label: 'ION', color: '#6f4cf5' },
     { id: 'verdant', label: 'VERDANT', color: '#16c98a' },
   ];
 
-  React.useEffect(function () { if (window.lucide) window.lucide.createIcons(); });
+  React.useEffect(function () {
+    if (window.lucide) window.lucide.createIcons();
+  });
 
   return (
     <div className="page-enter" key="settings">
@@ -419,10 +726,14 @@ function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
             <div className="accent-swatches">
               {accentOptions.map(function (opt) {
                 return (
-                  <button key={opt.id}
+                  <button
+                    key={opt.id}
                     className={'accent-swatch' + (tweaks.accentColor === opt.id ? ' on' : '')}
-                    onClick={function () { setTweak('accentColor', opt.id); }}
-                    title={opt.label}>
+                    onClick={function () {
+                      setTweak('accentColor', opt.id);
+                    }}
+                    title={opt.label}
+                  >
                     <span className="swatch-fill" style={{ background: opt.color }}></span>
                     <span className="swatch-label">{opt.label}</span>
                   </button>
@@ -438,8 +749,12 @@ function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
               <span className="settings-label-title">Background pattern</span>
               <span className="settings-label-desc">Dotted grid overlay on surfaces</span>
             </div>
-            <button className={'settings-toggle' + (tweaks.showPattern ? ' on' : '')}
-                    onClick={function () { setTweak('showPattern', !tweaks.showPattern); }}>
+            <button
+              className={'settings-toggle' + (tweaks.showPattern ? ' on' : '')}
+              onClick={function () {
+                setTweak('showPattern', !tweaks.showPattern);
+              }}
+            >
               <span className="settings-toggle-knob"></span>
             </button>
           </div>
@@ -459,8 +774,17 @@ function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
             </div>
             <div className="settings-seg">
               {['portrait', 'landscape'].map(function (v) {
-                return <button key={v} className={'settings-seg-btn' + (tweaks.posterAspect === v ? ' on' : '')}
-                              onClick={function () { setTweak('posterAspect', v); }}>{v === 'portrait' ? '2:3' : '16:9'}</button>;
+                return (
+                  <button
+                    key={v}
+                    className={'settings-seg-btn' + (tweaks.posterAspect === v ? ' on' : '')}
+                    onClick={function () {
+                      setTweak('posterAspect', v);
+                    }}
+                  >
+                    {v === 'portrait' ? '2:3' : '16:9'}
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -474,8 +798,17 @@ function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
             </div>
             <div className="settings-seg">
               {['compact', 'balanced', 'spacious'].map(function (v) {
-                return <button key={v} className={'settings-seg-btn' + (tweaks.gridDensity === v ? ' on' : '')}
-                              onClick={function () { setTweak('gridDensity', v); }}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>;
+                return (
+                  <button
+                    key={v}
+                    className={'settings-seg-btn' + (tweaks.gridDensity === v ? ' on' : '')}
+                    onClick={function () {
+                      setTweak('gridDensity', v);
+                    }}
+                  >
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -494,9 +827,22 @@ function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
               <span className="settings-label-desc">Position and style of the navigation bar</span>
             </div>
             <div className="settings-seg">
-              {[{v:'sidebar',l:'Sidebar'},{v:'compact',l:'Compact'},{v:'topnav',l:'Top'}].map(function (opt) {
-                return <button key={opt.v} className={'settings-seg-btn' + (tweaks.navStyle === opt.v ? ' on' : '')}
-                              onClick={function () { setTweak('navStyle', opt.v); }}>{opt.l}</button>;
+              {[
+                { v: 'sidebar', l: 'Sidebar' },
+                { v: 'compact', l: 'Compact' },
+                { v: 'topnav', l: 'Top' },
+              ].map(function (opt) {
+                return (
+                  <button
+                    key={opt.v}
+                    className={'settings-seg-btn' + (tweaks.navStyle === opt.v ? ' on' : '')}
+                    onClick={function () {
+                      setTweak('navStyle', opt.v);
+                    }}
+                  >
+                    {opt.l}
+                  </button>
+                );
               })}
             </div>
           </div>
@@ -514,7 +860,9 @@ function SettingsScreen({ tweaks, setTweak, session, onLogout }) {
               <span className="settings-label-title">Server</span>
               <span className="settings-label-desc">{session.server}</span>
             </div>
-            <span className="settings-status-badge"><span className="dot"></span>CONNECTED</span>
+            <span className="settings-status-badge">
+              <span className="dot"></span>CONNECTED
+            </span>
           </div>
 
           <div className="settings-sep"></div>

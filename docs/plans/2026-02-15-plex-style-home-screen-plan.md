@@ -17,6 +17,7 @@
 ### Task 1: Create components.css
 
 **Files:**
+
 - Create: `src/ui/browser/components/components.css`
 
 **Step 1: Create the CSS file with all new component styles**
@@ -171,6 +172,7 @@ git commit -m "feat: add component styles for home screen carousel, progress bar
 ### Task 2: Extend MediaCard with progress bar, subtitle, and remove year badge
 
 **Files:**
+
 - Modify: `src/ui/browser/components/MediaCard.js`
 - Modify: `src/ui/browser/browser.css` (remove `.media-card__year` styles)
 
@@ -255,6 +257,7 @@ Replace the `render()` method (lines 40-81) with:
 ```
 
 Key changes from original:
+
 - Removed `year` variable and `media-card__year` span
 - Added `subtitleHtml` — rendered at top-left when `this.subtitle` is set
 - Added `progressHtml` — rendered at bottom of poster when `showProgressBar` and percentage > 0
@@ -282,20 +285,22 @@ In `src/ui/browser/browser.css`, delete the `.media-card__year` block (lines 319
 Also in the responsive section (lines 374-378), remove the `.media-card__year` reference from the selector:
 
 Change:
+
 ```css
-  .media-card__year,
-  .media-card__badge {
-    font-size: 8px;
-    padding: 1px 4px;
-  }
+.media-card__year,
+.media-card__badge {
+  font-size: 8px;
+  padding: 1px 4px;
+}
 ```
 
 To:
+
 ```css
-  .media-card__badge {
-    font-size: 8px;
-    padding: 1px 4px;
-  }
+.media-card__badge {
+  font-size: 8px;
+  padding: 1px 4px;
+}
 ```
 
 **Step 4: Lint**
@@ -315,6 +320,7 @@ git commit -m "feat: extend MediaCard with progress bar and subtitle, remove yea
 ### Task 3: Create MediaRow component
 
 **Files:**
+
 - Create: `src/ui/browser/components/MediaRow.js`
 
 **Step 1: Create MediaRow**
@@ -337,8 +343,7 @@ class MediaRow {
    * @param {boolean} [options.showProgressBar=false] - Enable progress bar on cards
    */
   constructor({ container, title, onItemClick, emptyMessage = '', showProgressBar = false }) {
-    this.container =
-      typeof container === 'string' ? document.querySelector(container) : container;
+    this.container = typeof container === 'string' ? document.querySelector(container) : container;
     this.title = title;
     this.onItemClick = onItemClick;
     this.emptyMessage = emptyMessage;
@@ -552,6 +557,7 @@ git commit -m "feat: add MediaRow carousel component"
 ### Task 4: Create ContinueWatchingRow
 
 **Files:**
+
 - Create: `src/ui/browser/components/ContinueWatchingRow.js`
 
 **Step 1: Create ContinueWatchingRow**
@@ -595,9 +601,7 @@ class ContinueWatchingRow {
   initRow() {
     const container = document.querySelector(this.containerSelector);
     if (!container) {
-      console.error(
-        `ContinueWatchingRow: Container not found: ${this.containerSelector}`
-      );
+      console.error(`ContinueWatchingRow: Container not found: ${this.containerSelector}`);
       return;
     }
 
@@ -725,6 +729,7 @@ git commit -m "feat: add ContinueWatchingRow data component"
 ### Task 5: Create NextUpRow
 
 **Files:**
+
 - Create: `src/ui/browser/components/NextUpRow.js`
 
 **Step 1: Create NextUpRow**
@@ -918,6 +923,7 @@ git commit -m "feat: add NextUpRow data component"
 ### Task 6: Create RecentlyAddedRow
 
 **Files:**
+
 - Create: `src/ui/browser/components/RecentlyAddedRow.js`
 
 **Step 1: Create RecentlyAddedRow**
@@ -961,9 +967,7 @@ class RecentlyAddedRow {
   initRow() {
     const container = document.querySelector(this.containerSelector);
     if (!container) {
-      console.error(
-        `RecentlyAddedRow: Container not found: ${this.containerSelector}`
-      );
+      console.error(`RecentlyAddedRow: Container not found: ${this.containerSelector}`);
       return;
     }
 
@@ -1093,6 +1097,7 @@ git commit -m "feat: add RecentlyAddedRow data component"
 ### Task 7: Create HomeTab
 
 **Files:**
+
 - Create: `src/ui/browser/components/HomeTab.js`
 
 **Step 1: Create HomeTab page composer**
@@ -1202,6 +1207,7 @@ git commit -m "feat: add HomeTab page composer component"
 ### Task 8: Wire everything into index.html and browser.js
 
 **Files:**
+
 - Modify: `src/ui/browser/index.html`
 - Modify: `src/ui/browser/browser.js`
 
@@ -1210,7 +1216,7 @@ git commit -m "feat: add HomeTab page composer component"
 After line 8 (`<link rel="stylesheet" href="browser.css" />`), add:
 
 ```html
-    <link rel="stylesheet" href="components/components.css" />
+<link rel="stylesheet" href="components/components.css" />
 ```
 
 **Step 2: Update index.html — add Home tab button and make it default**
@@ -1218,13 +1224,13 @@ After line 8 (`<link rel="stylesheet" href="browser.css" />`), add:
 Replace the tab-nav div (lines 393-398):
 
 ```html
-        <div class="tab-nav">
-          <button class="tab-button active" data-tab="home">Home</button>
-          <button class="tab-button" data-tab="tvshows">TV Shows</button>
-          <button class="tab-button" data-tab="movies">Movies</button>
-          <button class="tab-button" data-tab="recent">Recent</button>
-          <button class="tab-button" data-tab="search">Search</button>
-        </div>
+<div class="tab-nav">
+  <button class="tab-button active" data-tab="home">Home</button>
+  <button class="tab-button" data-tab="tvshows">TV Shows</button>
+  <button class="tab-button" data-tab="movies">Movies</button>
+  <button class="tab-button" data-tab="recent">Recent</button>
+  <button class="tab-button" data-tab="search">Search</button>
+</div>
 ```
 
 Changes: added Home button (first, `active`), removed `active` from Recent button.
@@ -1234,24 +1240,26 @@ Changes: added Home button (first, `active`), removed `active` from Recent butto
 Add this right after the tab-nav closing `</div>` and before the Recent Items Tab comment (before line 400):
 
 ```html
-        <!-- Home Tab -->
-        <div id="homeTab" class="tab-content active">
-          <div id="continueWatchingRow"></div>
-          <div id="nextUpRow"></div>
-          <div id="recentlyAddedRow"></div>
-        </div>
+<!-- Home Tab -->
+<div id="homeTab" class="tab-content active">
+  <div id="continueWatchingRow"></div>
+  <div id="nextUpRow"></div>
+  <div id="recentlyAddedRow"></div>
+</div>
 ```
 
 Also change the Recent Items Tab from `active` to not-active. On line 401:
 
 Change:
+
 ```html
-        <div id="recentTab" class="tab-content active">
+<div id="recentTab" class="tab-content active"></div>
 ```
 
 To:
+
 ```html
-        <div id="recentTab" class="tab-content">
+<div id="recentTab" class="tab-content"></div>
 ```
 
 **Step 4: Update index.html — add script tags**
@@ -1259,11 +1267,11 @@ To:
 Before the `<script src="browser.js"></script>` line (line 478), add:
 
 ```html
-    <script src="components/MediaRow.js"></script>
-    <script src="components/ContinueWatchingRow.js"></script>
-    <script src="components/NextUpRow.js"></script>
-    <script src="components/RecentlyAddedRow.js"></script>
-    <script src="components/HomeTab.js"></script>
+<script src="components/MediaRow.js"></script>
+<script src="components/ContinueWatchingRow.js"></script>
+<script src="components/NextUpRow.js"></script>
+<script src="components/RecentlyAddedRow.js"></script>
+<script src="components/HomeTab.js"></script>
 ```
 
 Order matters: MediaRow must load before the data rows, and all rows must load before HomeTab. HomeTab must load before browser.js.
@@ -1304,6 +1312,7 @@ In `src/ui/browser/browser.js`, modify `initLibraryTabs()` (around line 136). Ad
 In the `onAuthSuccess` callback (around line 119-126), change from activating `recent` to `home`:
 
 Change:
+
 ```js
       onAuthSuccess: ({ currentServer, currentUser }) => {
         this.currentServer = currentServer;
@@ -1316,6 +1325,7 @@ Change:
 ```
 
 To:
+
 ```js
       onAuthSuccess: ({ currentServer, currentUser }) => {
         this.currentServer = currentServer;
@@ -1356,11 +1366,13 @@ Then: `pnpm check` again to confirm
 **Step 3: Manual verification checklist (in IINA)**
 
 Link the plugin:
+
 ```bash
 /Applications/IINA.app/Contents/MacOS/iina-plugin link .
 ```
 
 Verify:
+
 - [ ] Browser window opens with Home tab active by default
 - [ ] Continue Watching row shows in-progress items with progress bars (or hides if none)
 - [ ] Next Up row shows next episodes with series subtitle (or hides if none)
