@@ -260,6 +260,14 @@
       });
   }
 
+  function isEpisodeAvailable(ep) {
+    if (ep.LocationType === 'Virtual') return false;
+    if (!Array.isArray(ep.MediaSources) || ep.MediaSources.length === 0) return false;
+    return ep.MediaSources.some(function (s) {
+      return typeof s.Path === 'string' && s.Path.trim() !== '';
+    });
+  }
+
   async function fetchSeriesDetail(session, showId) {
     const showData = await apiGet(session, '/Users/' + session.userId + '/Items/' + showId, {
       Fields: 'Genres,Overview',
@@ -274,7 +282,7 @@
         const epData = await apiGet(session, '/Shows/' + showId + '/Episodes', {
           seasonId: season.Id,
           userId: session.userId,
-          Fields: 'UserData,RunTimeTicks',
+          Fields: 'UserData,RunTimeTicks,MediaSources,LocationType,Path',
         });
         return {
           num: season.IndexNumber || 1,
@@ -294,6 +302,7 @@
                   : ep.UserData && ep.UserData.PlaybackPositionTicks > 0
                     ? pct
                     : 0,
+              available: isEpisodeAvailable(ep),
             };
           }),
         };
