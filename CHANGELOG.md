@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix main-thread freeze when playing media in same window by deferring HTTP work 3s and routing API calls through browser WebView proxy
 - Continue Watching and Next Up episode cards play the episode directly instead of opening the series page
 - Series detail marks episodes with no media source or a Virtual location as unavailable and blocks clicking them
+- Reopening the Jellyfin browser keeps the window size and position the user set instead of resetting to the default frame
 
 ### Changed
 
