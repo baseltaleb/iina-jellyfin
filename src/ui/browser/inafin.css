@@ -1185,6 +1185,22 @@ input {
   border-radius: 999px;
   border: 1px solid var(--seam);
 }
+.episode-row.unavailable {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.episode-row.unavailable .ep-row-title {
+  color: var(--fg-muted);
+}
+.episode-row.unavailable:hover {
+  background: var(--hull);
+  border-color: var(--border-hair);
+}
+.ep-unavailable-icon {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--warn-400);
+}
 
 /* ===== SEARCH PALETTE ===== */
 .search-shroud {

@@ -1188,7 +1188,10 @@
         let nextEp = null;
         outer: for (let si = 0; si < show.seasons.length; si++) {
           for (let ei = 0; ei < show.seasons[si].episodes.length; ei++) {
-            if (show.seasons[si].episodes[ei].watched < 1) {
+            if (
+              show.seasons[si].episodes[ei].watched < 1 &&
+              show.seasons[si].episodes[ei].available !== false
+            ) {
               nextEp = {
                 season: show.seasons[si].num,
                 episode: show.seasons[si].episodes[ei].num,
@@ -1254,14 +1257,24 @@
               {season.episodes.map((ep) => (
                 <div
                   key={ep.num}
-                  className="episode-row"
-                  onClick={() => onItemPlay(ep.id, show.title + ' S' + season.num + 'E' + ep.num)}
+                  className={'episode-row' + (ep.available === false ? ' unavailable' : '')}
+                  onClick={
+                    ep.available === false
+                      ? undefined
+                      : () => onItemPlay(ep.id, show.title + ' S' + season.num + 'E' + ep.num)
+                  }
+                  style={ep.available === false ? { cursor: 'not-allowed' } : undefined}
+                  title={ep.available === false ? 'Episode not available on server' : undefined}
                 >
                   <span className="ep-num">{String(ep.num).padStart(2, '0')}</span>
                   <span className="ep-row-title">{ep.title}</span>
                   <span className="ep-row-runtime">{ep.runtime}</span>
                   <span className="ep-row-status">
-                    {ep.watched >= 1 ? (
+                    {ep.available === false ? (
+                      <span className="ep-unavailable-icon" title="Episode not available on server">
+                        ⚠
+                      </span>
+                    ) : ep.watched >= 1 ? (
                       <span className="ep-watched-dot"></span>
                     ) : ep.watched > 0 ? (
                       <div className="ep-partial-bar">
