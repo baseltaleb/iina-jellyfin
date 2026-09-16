@@ -26,6 +26,10 @@ const { initHttpProxy } = require('./proxy-http.js');
 let lastJellyfinUrl = null;
 let lastItemId = null;
 
+// Default frame for the Jellyfin browser window. Applied once, on the first open.
+const DEFAULT_BROWSER_FRAME = { x: 100, y: 100, width: 1000, height: 700 };
+let browserFrameInitialized = false;
+
 debugLog('Jellyfin Subtitles Plugin loaded');
 
 // Register proxy message handlers BEFORE loadFile so the proxy-ready handler
@@ -261,13 +265,17 @@ function manualSetTitle() {
 
 /**
  * Show Jellyfin Browser in a standalone window.
- * The window is already loaded at plugin init; this repositions and brings it to front.
+ * The window is already loaded at plugin init. The first call applies DEFAULT_BROWSER_FRAME;
+ * later calls only bring the window to front and keep the frame the user set.
  */
 function showJellyfinBrowser() {
   debugLog('Opening Jellyfin browser window');
   const sessionData = getStoredJellyfinSession();
 
-  standaloneWindow.setFrame({ x: 100, y: 100, width: 400, height: 600 });
+  if (!browserFrameInitialized) {
+    standaloneWindow.setFrame(DEFAULT_BROWSER_FRAME);
+    browserFrameInitialized = true;
+  }
   standaloneWindow.open();
 
   if (sessionData) {
