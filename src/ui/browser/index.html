@@ -881,29 +881,122 @@
         );
       }
 
-      function MoviesScreen({ session, onItemPlay }) {
+      const LIBRARY_PAGE_SIZE = 50;
+
+      function usePagedLibrary(fetchPage, session, sort) {
         const [items, setItems] = React.useState([]);
         const [loading, setLoading] = React.useState(true);
         const [error, setError] = React.useState(null);
-        const [sort, setSort] = React.useState('title');
+        const [loadingMore, setLoadingMore] = React.useState(false);
+        const [moreError, setMoreError] = React.useState(null);
+        const [done, setDone] = React.useState(false);
+        const inFlightRef = React.useRef(false);
+        const cursorRef = React.useRef(0);
+        const generationRef = React.useRef(0);
+        const sentinelRef = React.useRef(null);
 
-        function load() {
-          setLoading(true);
+        function reload() {
+          generationRef.current += 1;
+          const generation = generationRef.current;
+          cursorRef.current = 0;
+          inFlightRef.current = true;
+          setItems([]);
+          setDone(false);
           setError(null);
-          INAFIN_API.fetchMovies(session, sort)
-            .then((d) => {
-              setItems(d);
+          setMoreError(null);
+          setLoadingMore(false);
+          setLoading(true);
+          fetchPage(session, sort, 0, LIBRARY_PAGE_SIZE)
+            .then((res) => {
+              if (generation !== generationRef.current) return;
+              cursorRef.current += res.received;
+              setItems(res.items);
+              setDone(res.received === 0 || cursorRef.current >= res.total);
+              inFlightRef.current = false;
               setLoading(false);
             })
             .catch((e) => {
+              if (generation !== generationRef.current) return;
               setError(e.message || 'Failed to load');
+              inFlightRef.current = false;
               setLoading(false);
             });
         }
 
+        function loadMore() {
+          if (inFlightRef.current || done || loading || error) return;
+          const generation = generationRef.current;
+          inFlightRef.current = true;
+          setLoadingMore(true);
+          setMoreError(null);
+          fetchPage(session, sort, cursorRef.current, LIBRARY_PAGE_SIZE)
+            .then((res) => {
+              if (generation !== generationRef.current) return;
+              cursorRef.current += res.received;
+              setItems((prev) => prev.concat(res.items));
+              setDone(res.received === 0 || cursorRef.current >= res.total);
+              inFlightRef.current = false;
+              setLoadingMore(false);
+            })
+            .catch((e) => {
+              if (generation !== generationRef.current) return;
+              setMoreError(e.message || 'Failed to load');
+              inFlightRef.current = false;
+              setLoadingMore(false);
+            });
+        }
+
+        const loadMoreRef = React.useRef(loadMore);
+        loadMoreRef.current = loadMore;
+
         React.useEffect(() => {
-          load();
+          reload();
         }, [sort]);
+
+        const showSentinel = !loading && !error && !loadingMore && !moreError && !done;
+
+        React.useEffect(() => {
+          if (!showSentinel) return;
+          const node = sentinelRef.current;
+          if (!node) return;
+          const observer = new IntersectionObserver(
+            (entries) => {
+              if (entries.some((entry) => entry.isIntersecting)) loadMoreRef.current();
+            },
+            { root: node.closest('.main-content'), rootMargin: '0px 0px 400px 0px' }
+          );
+          observer.observe(node);
+          return () => observer.disconnect();
+        }, [showSentinel]);
+
+        return {
+          items,
+          loading,
+          error,
+          loadingMore,
+          moreError,
+          done,
+          reload,
+          loadMore,
+          sentinelRef,
+          showSentinel,
+        };
+      }
+
+      function MoviesScreen({ session, onItemPlay }) {
+        const [sort, setSort] = React.useState('title');
+        const {
+          items,
+          loading,
+          error,
+          loadingMore,
+          moreError,
+          done,
+          reload,
+          loadMore,
+          sentinelRef,
+          showSentinel,
+        } = usePagedLibrary(INAFIN_API.fetchMovies, session, sort);
 
         return (
           <div className="page-enter">
@@ -934,8 +1027,8 @@
               </div>
             </div>
             {loading && <LoadingState />}
-            {error && <ErrorBanner message={error} onRetry={load} />}
-            {!loading && !error && items.length === 0 && (
+            {error && <ErrorBanner message={error} onRetry={reload} />}
+            {!loading && !error && done && items.length === 0 && (
               <div
                 style={{
                   fontFamily: 'var(--font-mono)',
@@ -949,7 +1042,7 @@
                 NO MOVIES FOUND
               </div>
             )}
-            {!loading && !error && items.length > 0 && (
+            {!error && items.length > 0 && (
               <div className="media-grid">
                 {items.map((m) => (
                   <PosterCard
@@ -965,33 +1058,29 @@
                 ))}
               </div>
             )}
+            {loadingMore && <LoadingState />}
+            {moreError && <ErrorBanner message={moreError} onRetry={loadMore} />}
+            {showSentinel && (
+              <div ref={sentinelRef} className="library-sentinel" style={{ height: 1 }} />
+            )}
           </div>
         );
       }
 
       function ShowsScreen({ session, onShowSelect }) {
-        const [items, setItems] = React.useState([]);
-        const [loading, setLoading] = React.useState(true);
-        const [error, setError] = React.useState(null);
         const [sort, setSort] = React.useState('title');
-
-        function load() {
-          setLoading(true);
-          setError(null);
-          INAFIN_API.fetchShows(session, sort)
-            .then((d) => {
-              setItems(d);
-              setLoading(false);
-            })
-            .catch((e) => {
-              setError(e.message || 'Failed to load');
-              setLoading(false);
-            });
-        }
-
-        React.useEffect(() => {
-          load();
-        }, [sort]);
+        const {
+          items,
+          loading,
+          error,
+          loadingMore,
+          moreError,
+          done,
+          reload,
+          loadMore,
+          sentinelRef,
+          showSentinel,
+        } = usePagedLibrary(INAFIN_API.fetchShows, session, sort);
 
         return (
           <div className="page-enter">
@@ -1016,8 +1105,8 @@
               </div>
             </div>
             {loading && <LoadingState />}
-            {error && <ErrorBanner message={error} onRetry={load} />}
-            {!loading && !error && items.length === 0 && (
+            {error && <ErrorBanner message={error} onRetry={reload} />}
+            {!loading && !error && done && items.length === 0 && (
               <div
                 style={{
                   fontFamily: 'var(--font-mono)',
@@ -1031,7 +1120,7 @@
                 NO SHOWS FOUND
               </div>
             )}
-            {!loading && !error && items.length > 0 && (
+            {!error && items.length > 0 && (
               <div className="media-grid">
                 {items.map((s) => (
                   <PosterCard
@@ -1051,6 +1140,11 @@
                   />
                 ))}
               </div>
+            )}
+            {loadingMore && <LoadingState />}
+            {moreError && <ErrorBanner message={moreError} onRetry={loadMore} />}
+            {showSentinel && (
+              <div ref={sentinelRef} className="library-sentinel" style={{ height: 1 }} />
             )}
           </div>
         );
