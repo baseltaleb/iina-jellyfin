@@ -259,7 +259,7 @@ function MoviesScreen({ session, onItemPlay }) {
     setError(null);
     INAFIN_API.fetchMovies(session, sort)
       .then(function (d) {
-        setItems(d);
+        setItems(d.items);
         setLoading(false);
       })
       .catch(function (e) {
@@ -361,7 +361,7 @@ function ShowsScreen({ session, onShowSelect }) {
     setError(null);
     INAFIN_API.fetchShows(session, sort)
       .then(function (d) {
-        setItems(d);
+        setItems(d.items);
         setLoading(false);
       })
       .catch(function (e) {

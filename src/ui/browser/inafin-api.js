@@ -213,7 +213,7 @@
     });
   }
 
-  async function fetchMovies(session, sortBy) {
+  async function fetchMovies(session, sortBy, startIndex, limit) {
     const sortMap = { title: 'SortName', year: 'ProductionYear', recent: 'DateCreated' };
     const data = await apiGet(session, '/Users/' + session.userId + '/Items', {
       IncludeItemTypes: 'Movie',
@@ -221,9 +221,11 @@
       Fields: 'Genres,UserData,RunTimeTicks',
       SortBy: sortMap[sortBy] || 'SortName',
       SortOrder: sortBy === 'year' || sortBy === 'recent' ? 'Descending' : 'Ascending',
-      Limit: 200,
+      StartIndex: startIndex === undefined ? 0 : startIndex,
+      Limit: limit === undefined ? 50 : limit,
     });
-    return (data.Items || []).map(function (m) {
+    const raw = data.Items || [];
+    const items = raw.map(function (m) {
       return {
         id: m.Id,
         title: m.Name,
@@ -233,9 +235,10 @@
         watched: m.UserData && m.UserData.Played ? 1 : 0,
       };
     });
+    return { items: items, total: data.TotalRecordCount || 0, received: raw.length };
   }
 
-  async function fetchShows(session, sortBy) {
+  async function fetchShows(session, sortBy, startIndex, limit) {
     const sortMap = { title: 'SortName', year: 'ProductionYear' };
     const data = await apiGet(session, '/Users/' + session.userId + '/Items', {
       IncludeItemTypes: 'Series',
@@ -243,9 +246,11 @@
       Fields: 'Genres,UserData,ChildCount',
       SortBy: sortMap[sortBy] || 'SortName',
       SortOrder: sortBy === 'year' ? 'Descending' : 'Ascending',
-      Limit: 200,
+      StartIndex: startIndex === undefined ? 0 : startIndex,
+      Limit: limit === undefined ? 50 : limit,
     });
-    return (data.Items || [])
+    const raw = data.Items || [];
+    const items = raw
       .filter(function (s) {
         return !s.ChildCount || s.ChildCount > 0;
       })
@@ -258,6 +263,7 @@
           seasonCount: s.ChildCount || 0,
         };
       });
+    return { items: items, total: data.TotalRecordCount || 0, received: raw.length };
   }
 
   function isEpisodeAvailable(ep) {
