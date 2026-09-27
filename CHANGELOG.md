@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Remove unused duplicate browser JSX files (inafin-components.jsx, inafin-screens.jsx, tweaks-panel.jsx); the UI lives inline in index.html
 - Remove unused pre-redesign browser components and stylesheet
 - Redesign browser UI with React/Inafin design system; persist userId in session storage
 - Move Jellyfin browser UI from sidebar panel to standalone window
