@@ -73,6 +73,47 @@ async function fetchSeriesEpisodes(serverBase, seriesId, seasonId, apiKey) {
 }
 
 /**
+ * Fetch the seasons of a series that come after the current season
+ * Returns array of seasons sorted by index number, excluding Specials (season 0)
+ */
+async function fetchLaterSeasons(serverBase, seriesId, seasonId, seasonNumber, apiKey) {
+  try {
+    debugLog(`Fetching seasons for series: ${seriesId}`);
+
+    const response = await proxyGet(`${serverBase}/Shows/${seriesId}/Seasons?api_key=${apiKey}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.data) {
+      throw new Error('No data received from Jellyfin API');
+    }
+
+    const seasonData =
+      typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+
+    if (!seasonData.Items) {
+      debugLog('No seasons found in response');
+      return [];
+    }
+
+    const seasons = seasonData.Items.map((s) => ({
+      id: s.Id,
+      indexNumber: Number(s.IndexNumber) || 0,
+    })).filter((s) => s.indexNumber > seasonNumber && s.indexNumber !== 0 && s.id !== seasonId);
+
+    seasons.sort((a, b) => a.indexNumber - b.indexNumber);
+
+    debugLog(`Later seasons: ${seasons.map((s) => `S${s.indexNumber}`).join(', ')}`);
+    return seasons;
+  } catch (error) {
+    debugLog(`Error fetching seasons: ${error.message}`);
+    return [];
+  }
+}
+
+/**
  * Get series info from episode metadata
  * Returns the series ID and season ID
  */
@@ -135,11 +176,6 @@ async function addEpisodesToPlaylist(
     // Fetch all episodes for this season
     const episodes = await fetchSeriesEpisodes(serverBase, seriesId, seasonId, apiKey);
 
-    if (episodes.length === 0) {
-      debugLog('No episodes found to add to playlist');
-      return 0;
-    }
-
     debugLog(`Total episodes fetched: ${episodes.length}, current episode: ${currentEpNum}`);
     debugLog(`Episode index numbers available: ${episodes.map((e) => e.indexNumber).join(', ')}`);
 
@@ -158,8 +194,23 @@ async function addEpisodesToPlaylist(
       `After filtering (indexNumber > ${currentEpisodeNumber}): ${remainingEpisodes.map((e) => `E${e.indexNumber}`).join(', ')}`
     );
 
-    if (remainingEpisodes.length === 0) {
-      debugLog('No remaining episodes after the current one');
+    // Append the available episodes of later seasons, in season order
+    const queue = [...remainingEpisodes];
+    const laterSeasons = await fetchLaterSeasons(
+      serverBase,
+      seriesId,
+      seasonId,
+      seasonNumber,
+      apiKey
+    );
+    for (const season of laterSeasons) {
+      const seasonEpisodes = await fetchSeriesEpisodes(serverBase, seriesId, season.id, apiKey);
+      debugLog(`Season ${season.indexNumber}: ${seasonEpisodes.length} available episodes`);
+      queue.push(...seasonEpisodes);
+    }
+
+    if (queue.length === 0) {
+      debugLog('No remaining episodes to queue');
       return 0;
     }
 
@@ -176,10 +227,10 @@ async function addEpisodesToPlaylist(
       // Continue anyway - we'll just skip already-added items
     }
 
-    debugLog(`Adding ${remainingEpisodes.length} episodes to playlist`);
+    debugLog(`Adding ${queue.length} episodes to playlist`);
 
     let addedCount = 0;
-    for (const episode of remainingEpisodes) {
+    for (const episode of queue) {
       try {
         // Skip if already added in this session (in case clear didn't work)
         if (addedEpisodeIds.has(episode.id)) {
