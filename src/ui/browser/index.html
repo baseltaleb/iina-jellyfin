@@ -1215,6 +1215,18 @@
         );
       }
 
+      function findNextEpisode(show) {
+        for (let si = 0; si < show.seasons.length; si++) {
+          const eps = show.seasons[si].episodes;
+          for (let ei = 0; ei < eps.length; ei++) {
+            if (eps[ei].watched < 1 && eps[ei].available !== false) {
+              return { seasonIndex: si, episodeIndex: ei };
+            }
+          }
+        }
+        return null;
+      }
+
       function SeriesDetail({ session, showId, onBack, onItemPlay }) {
         const [show, setShow] = React.useState(null);
         const [loading, setLoading] = React.useState(true);
@@ -1226,9 +1238,10 @@
           setError(null);
           INAFIN_API.fetchSeriesDetail(session, showId)
             .then((d) => {
+              const pos = findNextEpisode(d);
               setShow(d);
               setLoading(false);
-              setActiveSeason(0);
+              setActiveSeason(pos ? pos.seasonIndex : 0);
             })
             .catch((e) => {
               setError(e.message || 'Failed to load');
@@ -1279,22 +1292,12 @@
 
         const season = show.seasons[activeSeason] || { episodes: [] };
 
+        const nextPos = findNextEpisode(show);
         let nextEp = null;
-        outer: for (let si = 0; si < show.seasons.length; si++) {
-          for (let ei = 0; ei < show.seasons[si].episodes.length; ei++) {
-            if (
-              show.seasons[si].episodes[ei].watched < 1 &&
-              show.seasons[si].episodes[ei].available !== false
-            ) {
-              nextEp = {
-                season: show.seasons[si].num,
-                episode: show.seasons[si].episodes[ei].num,
-                id: show.seasons[si].episodes[ei].id,
-                title: show.seasons[si].episodes[ei].title,
-              };
-              break outer;
-            }
-          }
+        if (nextPos) {
+          const s = show.seasons[nextPos.seasonIndex];
+          const ep = s.episodes[nextPos.episodeIndex];
+          nextEp = { season: s.num, episode: ep.num, id: ep.id, title: ep.title };
         }
 
         return (
