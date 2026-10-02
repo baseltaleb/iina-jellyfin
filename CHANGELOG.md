@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reopening the Jellyfin browser keeps the window size and position the user set instead of resetting to the default frame
 - Playing from the browser falls back to the current window when a new IINA window cannot be created
 - Movies and TV Shows tabs page through the whole library instead of stopping at 200 items
+- Autoplay continues into the next season when the current season ends instead of stopping at the season boundary
 
 ### Changed
 
