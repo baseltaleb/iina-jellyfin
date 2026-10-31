@@ -39,7 +39,7 @@
       itemId +
       '/Images/Primary?maxWidth=' +
       (maxWidth || 300) +
-      '&api_key=' +
+      '&ApiKey=' +
       session.accessToken
     );
   }
@@ -94,7 +94,7 @@
   // ── API plumbing ──────────────────────────────────────────────────────────
 
   function apiGet(session, path, params) {
-    const qs = new URLSearchParams(Object.assign({ api_key: session.accessToken }, params || {}));
+    const qs = new URLSearchParams(Object.assign({ ApiKey: session.accessToken }, params || {}));
     return fetch(session.url + path + '?' + qs.toString()).then(function (r) {
       if (!r.ok) throw new Error('API error ' + r.status);
       return r.json();
@@ -109,7 +109,7 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emby-Authorization':
+        Authorization:
           'MediaBrowser Client="Inafin", Device="Browser", DeviceId="inafin-browser", Version="1.0"',
       },
       body: JSON.stringify({ Username: username, Pw: password }),
@@ -357,7 +357,7 @@
   }
 
   function getStreamUrl(session, itemId) {
-    return session.url + '/Videos/' + itemId + '/stream?Static=true&api_key=' + session.accessToken;
+    return session.url + '/Videos/' + itemId + '/stream?Static=true&ApiKey=' + session.accessToken;
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────

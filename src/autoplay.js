@@ -26,7 +26,7 @@ async function fetchSeriesEpisodes(serverBase, seriesId, seasonId, apiKey) {
     ].join('&');
 
     const response = await proxyGet(
-      `${serverBase}/Shows/${seriesId}/Episodes?${queryParams}&api_key=${apiKey}`,
+      `${serverBase}/Shows/${seriesId}/Episodes?${queryParams}&ApiKey=${apiKey}`,
       {
         headers: {
           Accept: 'application/json',
@@ -56,7 +56,7 @@ async function fetchSeriesEpisodes(serverBase, seriesId, seasonId, apiKey) {
       name: ep.Name,
       indexNumber: Number(ep.IndexNumber) || 0, // Ensure it's a number
       duration: ep.RunTimeTicks,
-      playUrl: `${serverBase}/Items/${ep.Id}/Download?api_key=${apiKey}`,
+      playUrl: `${serverBase}/Items/${ep.Id}/Download?ApiKey=${apiKey}`,
     }));
 
     // Sort episodes by index number for consistent ordering
@@ -80,7 +80,7 @@ async function fetchLaterSeasons(serverBase, seriesId, seasonId, seasonNumber, a
   try {
     debugLog(`Fetching seasons for series: ${seriesId}`);
 
-    const response = await proxyGet(`${serverBase}/Shows/${seriesId}/Seasons?api_key=${apiKey}`, {
+    const response = await proxyGet(`${serverBase}/Shows/${seriesId}/Seasons?ApiKey=${apiKey}`, {
       headers: {
         Accept: 'application/json',
       },

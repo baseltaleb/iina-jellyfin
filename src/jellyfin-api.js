@@ -53,10 +53,10 @@ function parseJellyfinUrl(url) {
 
     const itemId = pathMatch[1];
 
-    // Extract API key from query string
+    // Extract API key from query string ("ApiKey", or legacy "api_key" from older servers)
     let apiKey = null;
     if (queryString) {
-      const apiKeyMatch = queryString.match(/(?:^|&)api_key=([^&]+)/);
+      const apiKeyMatch = queryString.match(/(?:^|&)(?:ApiKey|api_key)=([^&]+)/i);
       if (apiKeyMatch) {
         apiKey = decodeURIComponent(apiKeyMatch[1]);
       }
@@ -89,7 +89,7 @@ function parseJellyfinUrl(url) {
 function isJellyfinUrl(url) {
   return (
     url &&
-    ((url.includes('/Items/') && url.includes('api_key=')) ||
+    ((url.includes('/Items/') && /[?&](?:ApiKey|api_key)=/i.test(url)) ||
       url.includes('jellyfin') ||
       url.includes('/Audio/') ||
       url.includes('/Videos/'))
@@ -101,7 +101,7 @@ function isJellyfinUrl(url) {
  */
 async function fetchPlaybackInfo(serverBase, itemId, apiKey) {
   try {
-    const playbackUrl = `${serverBase}/Items/${itemId}/PlaybackInfo?api_key=${apiKey}`;
+    const playbackUrl = `${serverBase}/Items/${itemId}/PlaybackInfo?ApiKey=${apiKey}`;
     debugLog(`Fetching playback info from: ${playbackUrl}`);
 
     const response = await proxyGet(playbackUrl, {
@@ -140,7 +140,7 @@ async function fetchPlaybackInfo(serverBase, itemId, apiKey) {
  */
 async function fetchItemMetadata(serverBase, itemId, apiKey) {
   try {
-    const metadataUrl = `${serverBase}/Items/${itemId}?api_key=${apiKey}`;
+    const metadataUrl = `${serverBase}/Items/${itemId}?ApiKey=${apiKey}`;
     debugLog(`Fetching item metadata from: ${metadataUrl}`);
 
     const response = await proxyGet(metadataUrl, {
@@ -181,7 +181,7 @@ async function fetchItemMetadata(serverBase, itemId, apiKey) {
  */
 async function fetchCurrentUserId(serverBase, apiKey) {
   try {
-    const url = `${serverBase}/Users/Me?api_key=${apiKey}`;
+    const url = `${serverBase}/Users/Me?ApiKey=${apiKey}`;
     debugLog(`Fetching current user ID from: ${url}`);
 
     const response = await proxyGet(url, {

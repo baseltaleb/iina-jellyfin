@@ -109,7 +109,7 @@ async function reportPlaybackStart(serverBase, itemId, apiKey, playSessionId, me
       return false;
     }
 
-    const url = `${serverBase}/Sessions/Playing?api_key=${apiKey}`;
+    const url = `${serverBase}/Sessions/Playing?ApiKey=${apiKey}`;
     debugLog(`Reporting playback start for item: ${itemId}`);
 
     const response = await proxyPost(url, {
@@ -168,7 +168,7 @@ async function reportPlaybackProgress(
     }
 
     const positionTicks = secondsToTicks(positionSeconds);
-    const url = `${serverBase}/Sessions/Playing/Progress?api_key=${apiKey}`;
+    const url = `${serverBase}/Sessions/Playing/Progress?ApiKey=${apiKey}`;
 
     const response = await proxyPost(url, {
       headers: {
@@ -223,7 +223,7 @@ async function reportPlaybackStop(
     }
 
     const positionTicks = secondsToTicks(positionSeconds);
-    const url = `${serverBase}/Sessions/Playing/Stopped?api_key=${apiKey}`;
+    const url = `${serverBase}/Sessions/Playing/Stopped?ApiKey=${apiKey}`;
 
     debugLog(`Reporting playback stop: position=${positionSeconds}s (${positionTicks} ticks)`);
 
@@ -276,7 +276,7 @@ async function markAsWatched(serverBase, itemId, apiKey, userId) {
     }
 
     // Use UserPlayedItems endpoint with userId - required by Jellyfin API
-    const url = `${serverBase}/UserPlayedItems/${itemId}?userId=${userId}&api_key=${apiKey}`;
+    const url = `${serverBase}/UserPlayedItems/${itemId}?userId=${userId}&ApiKey=${apiKey}`;
     debugLog(`Marking item as watched: ${itemId} for user: ${userId}`);
 
     const response = await proxyPost(url, {

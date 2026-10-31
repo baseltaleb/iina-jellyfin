@@ -50,7 +50,7 @@ An comprehensive IINA plugin that provides Jellyfin media server integration, in
 
 The plugin automatically detects and downloads subtitles when you open Jellyfin URLs directly:
 
-1. Copy a Jellyfin media URL (containing `/Items/` and `api_key=`)
+1. Copy a Jellyfin media URL (containing `/Items/` and `ApiKey=` or `api_key=`)
 2. Use File → Open URL in IINA
 3. Subtitles will be downloaded automatically based on your preferences
 
@@ -58,7 +58,7 @@ The plugin automatically detects and downloads subtitles when you open Jellyfin 
 
 #### Automatic Login (Recommended)
 
-1. First, open any Jellyfin media URL containing an API key (e.g., `http://server:8096/Items/{ItemId}/Download?api_key={key}`)
+1. First, open any Jellyfin media URL containing an API key (e.g., `http://server:8096/Items/{ItemId}/Download?ApiKey={key}`)
 2. The plugin automatically extracts and stores your server URL and API key
 3. Open the Jellyfin browser: View menu → "Show Jellyfin Browser" or press `Cmd+Shift+J`
 4. The browser will automatically connect using your stored credentials
@@ -77,8 +77,8 @@ The plugin automatically detects and downloads subtitles when you open Jellyfin 
 
 The plugin automatically detects Jellyfin URLs in these formats:
 
-- Download URLs: `http://server:port/Items/{ItemId}/Download?api_key={key}` _(automatically enables browser login)_
-- URLs containing `/Items/` and `api_key=` _(automatically enables browser login)_
+- Download URLs: `http://server:port/Items/{ItemId}/Download?ApiKey={key}` _(automatically enables browser login)_
+- URLs containing `/Items/` and `ApiKey=` (or legacy `api_key=`) _(automatically enables browser login)_
 - URLs containing "jellyfin", "/Audio/", or "/Videos/"
 
 **Note**: URLs with API keys will automatically store authentication data for the Jellyfin browser, eliminating the need for manual login.

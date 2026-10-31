@@ -12,7 +12,7 @@ const { fetchPlaybackInfo } = require('./jellyfin-api.js');
  */
 async function downloadSubtitle(serverBase, itemId, streamIndex, apiKey, language, codec) {
   try {
-    const subtitleUrl = `${serverBase}/Videos/${itemId}/${streamIndex}/Subtitles.${codec}?api_key=${apiKey}`;
+    const subtitleUrl = `${serverBase}/Videos/${itemId}/${streamIndex}/Subtitles.${codec}?ApiKey=${apiKey}`;
     // Sanitize filename components to prevent path traversal
     const sanitizedItemId = String(itemId).replace(/[^a-zA-Z0-9_-]/g, '_');
     const sanitizedLanguage = String(language).replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -66,7 +66,7 @@ async function downloadExternalSubtitle(
 
     // Use the correct Jellyfin API endpoint for subtitle download
     // Format: /Videos/{itemId}/{mediaSourceId}/Subtitles/{streamIndex}/stream.{extension}
-    const subtitleUrl = `${serverBase}/Videos/${itemId}/${itemId}/Subtitles/${streamIndex}/stream.${extension}?api_key=${apiKey}`;
+    const subtitleUrl = `${serverBase}/Videos/${itemId}/${itemId}/Subtitles/${streamIndex}/stream.${extension}?ApiKey=${apiKey}`;
 
     // Try to extract the original filename from the subtitle path
     let fileName;
