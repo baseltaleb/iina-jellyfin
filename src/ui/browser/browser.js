@@ -42,3 +42,18 @@
 
   iina.postMessage('proxy-ready', {});
 })();
+
+/**
+ * Screen Info
+ *
+ * The plugin cannot read the screen size when no player window is loaded, so the
+ * WebView sends the usable screen area (without the menu bar and the Dock).
+ */
+(function sendScreenInfo() {
+  if (typeof iina === 'undefined' || !iina.postMessage) {
+    return;
+  }
+
+  const { availWidth, availHeight, availLeft, availTop, height } = window.screen;
+  iina.postMessage('screen-info', { availWidth, availHeight, availLeft, availTop, height });
+})();

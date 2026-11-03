@@ -26,9 +26,30 @@ const { initHttpProxy } = require('./proxy-http.js');
 let lastJellyfinUrl = null;
 let lastItemId = null;
 
-// Default frame for the Jellyfin browser window. Applied once, on the first open.
+// The Jellyfin browser window fills the usable screen area on the first open.
+// The plugin uses this frame only if the WebView sends no valid screen info.
 const DEFAULT_BROWSER_FRAME = { x: 100, y: 100, width: 1000, height: 700 };
 let browserFrameInitialized = false;
+
+/**
+ * Convert the WebView screen info to an AppKit frame (origin at the bottom-left).
+ * Returns null if the info is not valid.
+ */
+function getBrowserFrameFromScreen(info) {
+  if (!info || !(info.availWidth > 0) || !(info.availHeight > 0)) {
+    return null;
+  }
+  const x = Number.isFinite(info.availLeft) ? info.availLeft : 0;
+  const y =
+    Number.isFinite(info.availTop) && Number.isFinite(info.height)
+      ? info.height - info.availTop - info.availHeight
+      : 0;
+  return { x, y, width: info.availWidth, height: info.availHeight };
+}
+
+function applyBrowserFrame(frame) {
+  standaloneWindow.setFrame(frame.width, frame.height, frame.x, frame.y);
+}
 
 debugLog('Jellyfin Subtitles Plugin loaded');
 
@@ -44,6 +65,17 @@ standaloneWindow.loadFile('src/ui/browser/index.html');
 standaloneWindow.setProperty('title', 'Jellyfin Browser');
 standaloneWindow.setProperty('resizable', true);
 standaloneWindow.setProperty('minimizable', true);
+
+// The WebView sends this message when its script runs (after the first open).
+standaloneWindow.onMessage('screen-info', (info) => {
+  if (browserFrameInitialized) {
+    return;
+  }
+  browserFrameInitialized = true;
+  const frame = getBrowserFrameFromScreen(info) || DEFAULT_BROWSER_FRAME;
+  debugLog(`Setting browser window frame: ${JSON.stringify(frame)}`);
+  applyBrowserFrame(frame);
+});
 
 standaloneWindow.onMessage('get-session', () => {
   const currentSession = getStoredJellyfinSession();
@@ -280,17 +312,14 @@ function manualSetTitle() {
 
 /**
  * Show Jellyfin Browser in a standalone window.
- * The window is already loaded at plugin init. The first call applies DEFAULT_BROWSER_FRAME;
- * later calls only bring the window to front and keep the frame the user set.
+ * The window is already loaded at plugin init. On the first open, the 'screen-info'
+ * handler sizes the window to the screen. Later calls only bring the window to front
+ * and keep the frame the user set.
  */
 function showJellyfinBrowser() {
   debugLog('Opening Jellyfin browser window');
   const sessionData = getStoredJellyfinSession();
 
-  if (!browserFrameInitialized) {
-    standaloneWindow.setFrame(DEFAULT_BROWSER_FRAME);
-    browserFrameInitialized = true;
-  }
   standaloneWindow.open();
 
   if (sessionData) {
