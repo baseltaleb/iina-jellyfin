@@ -7,7 +7,7 @@ const { fetchPlaybackInfo, fetchItemMetadata, fetchCurrentUserId } = require('./
 
 const { proxyPost } = require('./proxy-http.js');
 
-const { core, preferences } = iina;
+const { core, mpv, preferences } = iina;
 
 // Playback tracking state
 let currentPlaybackSession = null; // Current Jellyfin playback session info
@@ -440,6 +440,69 @@ function handlePlaybackPositionChange() {
 }
 
 /**
+ * Send one progress report to Jellyfin at once, skipping the throttle.
+ * Used for pause, resume, and seek so the server sees the change immediately.
+ * @param {string} reason - Why the report is sent ('pause' or 'seek')
+ */
+function sendImmediateProgressReport(reason) {
+  if (!currentPlaybackSession) return;
+
+  try {
+    const position = core.status.position;
+    if (position === null || position === undefined) return;
+
+    const isPaused = core.status.paused || false;
+    const { serverBase, itemId, apiKey, playSessionId, mediaSourceId } = currentPlaybackSession;
+
+    debugLog(
+      `Immediate progress report (${reason}): position=${position.toFixed(1)}s, paused=${isPaused}`
+    );
+
+    reportPlaybackProgress(
+      serverBase,
+      itemId,
+      apiKey,
+      position,
+      playSessionId,
+      mediaSourceId,
+      isPaused
+    );
+
+    lastReportedPosition = position;
+    lastProgressReportTime = Date.now();
+  } catch (error) {
+    debugLog(`Error sending immediate progress report (${reason}): ${error.message}`);
+  }
+}
+
+/**
+ * Handle pause state change
+ * Called by mpv.pause.changed event
+ * Reports the paused or resumed state to Jellyfin immediately.
+ */
+function handlePauseChange() {
+  sendImmediateProgressReport('pause');
+}
+
+/**
+ * Handle seek state change
+ * Called by mpv.seeking.changed event
+ * Reports the new position to Jellyfin only when `seeking` turns false.
+ */
+function handleSeek() {
+  if (!currentPlaybackSession) return;
+
+  try {
+    if (mpv.getFlag('seeking')) return;
+  } catch (error) {
+    debugLog(`Error in seek handler: ${error.message}`);
+    return;
+  }
+
+  sendImmediateProgressReport('seek');
+}
+
+/**
  * Stop playback tracking and report final position
  */
 function stopPlaybackTracking() {
@@ -508,6 +571,8 @@ module.exports = {
   startPlaybackTracking,
   stopPlaybackTracking,
   handlePlaybackPositionChange,
+  handlePauseChange,
+  handleSeek,
   handleEofReached,
   getCurrentPlaybackSession,
 };

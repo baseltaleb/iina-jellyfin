@@ -16,6 +16,8 @@ const {
   startPlaybackTracking,
   stopPlaybackTracking,
   handlePlaybackPositionChange,
+  handlePauseChange,
+  handleSeek,
   handleEofReached,
 } = require('./playback.js');
 const { setVideoTitleFromMetadata } = require('./metadata.js');
@@ -413,6 +415,8 @@ event.on('iina.file-loaded', onFileLoaded);
 
 // Playback tracking events for Jellyfin progress sync
 event.on('mpv.time-pos.changed', handlePlaybackPositionChange);
+event.on('mpv.pause.changed', handlePauseChange);
+event.on('mpv.seeking.changed', handleSeek);
 
 // Stop tracking when window closes
 event.on('iina.window-will-close', () => {
