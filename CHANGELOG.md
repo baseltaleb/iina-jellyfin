@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Movies and TV Shows tabs page through the whole library instead of stopping at 200 items
 - Series page opens on the season of the next unwatched episode instead of always Season 1
 - Autoplay continues into the next season when the current season ends instead of stopping at the season boundary
+- Pause, resume, and seek report to Jellyfin immediately instead of waiting up to 10 s, so the server shows the paused state
 
 ### Changed
 
